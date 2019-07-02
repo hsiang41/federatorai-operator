@@ -20,7 +20,7 @@ spec:
   maturity: stable
   displayName: Federator.ai
   description: |
-    **Federator.ai**, ProphetStor’s Artificial Intelligence for IT Operations (AIOps) platform, provides intelligence to orchestrate container resources on top of VMs (virtual machines) or bare metal, allowing users to operate applications without the need to manage the underlying computing resources. It aims to provide optimal resource planning recommendations that will help enterprises make better decisions. The benefits of **Federator.ai** include:
+    **Federator.ai**, ProphetStor's Artificial Intelligence for IT Operations (AIOps) platform, provides intelligence to orchestrate container resources on top of VMs (virtual machines) or bare metal, allowing users to operate applications without the need to manage the underlying computing resources. It aims to provide optimal resource planning recommendations that will help enterprises make better decisions. The benefits of **Federator.ai** include:
     - Up to 60% resource savings
     - Increased operational efficiency
     - Reduced manual configuration time with digital intelligence
@@ -341,10 +341,8 @@ spec:
               serviceAccountName: federatorai-operator
               containers:
                 - name: federatorai-operator
-                  # Replace this with the built image name
-                  # image: registry.connect.redhat.com/prophetstor/federatorai-operator:4.1.20
-                  image: quay.io/prophetstor/federatorai-operator-ubi:v4.1.20
-                  imagePullPolicy: Always
+                  image: registry.connect.redhat.com/prophetstor/federatorai-operator:4.1.20
+                  imagePullPolicy: IfNotPresent
                   command:
                   - federatorai-operator
                   env:

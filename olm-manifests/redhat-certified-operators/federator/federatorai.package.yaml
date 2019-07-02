@@ -1,5 +1,0 @@
-#packageName: federatorai-certified
-packageName: federatorai-operator-dev
-channels:
-- name: stable
-  currentCSV: federatorai.v4.1.20
