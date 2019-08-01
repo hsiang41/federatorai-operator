@@ -12,7 +12,7 @@ data:
     debug = false
 
     [datahub]
-    address = "alameda-datahub.federatorai.svc"
+    address = "alameda-datahub.{{.NameSpace}}.svc"
     port = 50050
 
     [hpa_scaling]

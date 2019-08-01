@@ -23,7 +23,7 @@ data:
                 "name": "InfluxDB",                  
                 "type": "influxdb",
                 "access": "proxy",
-                "url": "https://alameda-influxdb.federatorai.svc:8086",
+                "url": "https://alameda-influxdb.{{.NameSpace}}.svc:8086",
                 "password": "adminpass",
                 "user": "admin",
                 "database": "_internal",

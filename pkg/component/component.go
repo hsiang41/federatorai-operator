@@ -1,8 +1,10 @@
 package component
 
 import (
+	"bytes"
 	"crypto/x509"
 	"fmt"
+	"html/template"
 	"net"
 	"strconv"
 	"strings"
@@ -77,7 +79,15 @@ func (c ComponentConfig) NewConfigMap(str string) *corev1.ConfigMap {
 		log.Error(err, "Failed to Test create configmap")
 
 	}
-	cm := resourceread.ReadConfigMapV1(cmByte)
+	tmpl, err := template.New("namespaceServiceToYaml").Parse(string(cmByte[:]))
+	if err != nil {
+		panic(err)
+	}
+	yamlBuffer := new(bytes.Buffer)
+	if err = tmpl.Execute(yamlBuffer, c); err != nil {
+		panic(err)
+	}
+	cm := resourceread.ReadConfigMapV1(yamlBuffer.Bytes())
 	cm.Namespace = c.NameSpace
 	return cm
 }
@@ -119,7 +129,15 @@ func (c ComponentConfig) NewDeployment(str string) *appsv1.Deployment {
 		log.Error(err, "Failed to Test create deployment")
 
 	}
-	d := resourceread.ReadDeploymentV1(deploymentBytes)
+	tmpl, err := template.New("namespaceServiceToYaml").Parse(string(deploymentBytes[:]))
+	if err != nil {
+		panic(err)
+	}
+	yamlBuffer := new(bytes.Buffer)
+	if err = tmpl.Execute(yamlBuffer, c); err != nil {
+		panic(err)
+	}
+	d := resourceread.ReadDeploymentV1(yamlBuffer.Bytes())
 	d.Namespace = c.NameSpace
 	d.Spec.Template = c.mutatePodTemplateSpecWithConfig(d.Spec.Template)
 	return d
