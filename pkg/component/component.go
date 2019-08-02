@@ -42,16 +42,28 @@ func (c *ComponentConfig) SetNameSpace(ns string) {
 	c.NameSpace = ns
 }
 
+func (c ComponentConfig) templateAssets(data string) []byte {
+	tmpl, err := template.New("namespaceServiceToYaml").Parse(data)
+	if err != nil {
+		panic(err)
+	}
+	yamlBuffer := new(bytes.Buffer)
+	if err = tmpl.Execute(yamlBuffer, c); err != nil {
+		panic(err)
+	}
+	return yamlBuffer.Bytes()
+}
+
 func (c ComponentConfig) NewClusterRoleBinding(str string) *rbacv1.ClusterRoleBinding {
 	crbByte, err := assets.Asset(str)
 	if err != nil {
 		log.Error(err, "Failed to Test create clusterrolebinding")
 
 	}
-	crb := resourceread.ReadClusterRoleBindingV1(crbByte)
-	crb.Name = strings.Replace(crb.Name, strings.Split(crb.Name, "-")[0], c.NameSpace, -1)
-	crb.RoleRef.Name = crb.Name
-	crb.Subjects[0].Namespace = c.NameSpace
+	crb := resourceread.ReadClusterRoleBindingV1(c.templateAssets(string(crbByte[:])))
+	//crb.Name = strings.Replace(crb.Name, strings.Split(crb.Name, "-")[0], c.NameSpace, -1)
+	//crb.RoleRef.Name = crb.Name
+	//crb.Subjects[0].Namespace = c.NameSpace
 	return crb
 }
 func (c ComponentConfig) NewClusterRole(str string) *rbacv1.ClusterRole {
@@ -59,8 +71,8 @@ func (c ComponentConfig) NewClusterRole(str string) *rbacv1.ClusterRole {
 	if err != nil {
 		log.Error(err, "Failed to Test create clusterrole")
 	}
-	cr := resourceread.ReadClusterRoleV1(crByte)
-	cr.Name = strings.Replace(cr.Name, strings.Split(cr.Name, "-")[0], c.NameSpace, -1)
+	cr := resourceread.ReadClusterRoleV1(c.templateAssets(string(crByte[:])))
+	//cr.Name = strings.Replace(cr.Name, strings.Split(cr.Name, "-")[0], c.NameSpace, -1)
 	return cr
 }
 func (c ComponentConfig) NewServiceAccount(str string) *corev1.ServiceAccount {
@@ -69,7 +81,7 @@ func (c ComponentConfig) NewServiceAccount(str string) *corev1.ServiceAccount {
 		log.Error(err, "Failed to Test create serviceaccount")
 
 	}
-	sa := resourceread.ReadServiceAccountV1(saByte)
+	sa := resourceread.ReadServiceAccountV1(c.templateAssets(string(saByte[:])))
 	sa.Namespace = c.NameSpace
 	return sa
 }
@@ -79,15 +91,7 @@ func (c ComponentConfig) NewConfigMap(str string) *corev1.ConfigMap {
 		log.Error(err, "Failed to Test create configmap")
 
 	}
-	tmpl, err := template.New("namespaceServiceToYaml").Parse(string(cmByte[:]))
-	if err != nil {
-		panic(err)
-	}
-	yamlBuffer := new(bytes.Buffer)
-	if err = tmpl.Execute(yamlBuffer, c); err != nil {
-		panic(err)
-	}
-	cm := resourceread.ReadConfigMapV1(yamlBuffer.Bytes())
+	cm := resourceread.ReadConfigMapV1(c.templateAssets(string(cmByte[:])))
 	cm.Namespace = c.NameSpace
 	return cm
 }
@@ -97,7 +101,7 @@ func (c ComponentConfig) NewPersistentVolumeClaim(str string) *corev1.Persistent
 		log.Error(err, "Failed to Test create persistentvolumeclaim")
 
 	}
-	pvc := resourceread.ReadPersistentVolumeClaimV1(pvcByte)
+	pvc := resourceread.ReadPersistentVolumeClaimV1(c.templateAssets(string(pvcByte[:])))
 	pvc.Namespace = c.NameSpace
 	return pvc
 }
@@ -107,7 +111,7 @@ func (c ComponentConfig) NewService(str string) *corev1.Service {
 		log.Error(err, "Failed to Test create service")
 
 	}
-	sv := resourceread.ReadServiceV1(svByte)
+	sv := resourceread.ReadServiceV1(c.templateAssets(string(svByte[:])))
 	sv.Namespace = c.NameSpace
 	return sv
 }
@@ -118,7 +122,7 @@ func (c ComponentConfig) NewAlamedaScaler(str string) *autoscaling_v1alpha1.Alam
 		log.Error(err, "Failed to Test create NewAlamedaScaler")
 
 	}
-	scaler := resourceread.ReadScalerV1(scalerByte)
+	scaler := resourceread.ReadScalerV1(c.templateAssets(string(scalerByte[:])))
 	scaler.Namespace = c.NameSpace
 	return scaler
 }
@@ -129,15 +133,7 @@ func (c ComponentConfig) NewDeployment(str string) *appsv1.Deployment {
 		log.Error(err, "Failed to Test create deployment")
 
 	}
-	tmpl, err := template.New("namespaceServiceToYaml").Parse(string(deploymentBytes[:]))
-	if err != nil {
-		panic(err)
-	}
-	yamlBuffer := new(bytes.Buffer)
-	if err = tmpl.Execute(yamlBuffer, c); err != nil {
-		panic(err)
-	}
-	d := resourceread.ReadDeploymentV1(yamlBuffer.Bytes())
+	d := resourceread.ReadDeploymentV1(c.templateAssets(string(deploymentBytes[:])))
 	d.Namespace = c.NameSpace
 	d.Spec.Template = c.mutatePodTemplateSpecWithConfig(d.Spec.Template)
 	return d
@@ -149,7 +145,7 @@ func (c ComponentConfig) NewRoute(str string) *routev1.Route {
 		log.Error(err, "Failed to Test create route")
 
 	}
-	rt := resourceread.ReadRouteV1(rtByte)
+	rt := resourceread.ReadRouteV1(c.templateAssets(string(rtByte[:])))
 	rt.Namespace = c.NameSpace
 	return rt
 }
@@ -160,7 +156,7 @@ func (c ComponentConfig) NewIngress(str string) *ingressv1beta1.Ingress {
 		log.Error(err, "Failed to Test create ingress")
 
 	}
-	ig := resourceread.ReadIngressv1beta1(igByte)
+	ig := resourceread.ReadIngressv1beta1(c.templateAssets(string(igByte[:])))
 	ig.Namespace = c.NameSpace
 	return ig
 }
@@ -171,7 +167,7 @@ func (c ComponentConfig) NewStatefulSet(str string) *appsv1.StatefulSet {
 		log.Error(err, "Failed to Test create statefulset")
 
 	}
-	ss := resourceread.ReadStatefulSetV1(ssByte)
+	ss := resourceread.ReadStatefulSetV1(c.templateAssets(string(ssByte[:])))
 	ss.Namespace = c.NameSpace
 	return ss
 }
@@ -270,7 +266,7 @@ func (c ComponentConfig) NewSecret(str string) (*corev1.Secret, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build secret from assets' bin data")
 	}
-	s, err := resourceread.ReadSecretV1(secretBytes)
+	s, err := resourceread.ReadSecretV1(c.templateAssets(string(secretBytes[:])))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build secret from assets' bin data")
 	}

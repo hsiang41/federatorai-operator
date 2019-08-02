@@ -2,7 +2,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: fedemeter-config
-  namespace: federatorai
+  namespace: {{.NameSpace}}
 data:
     FEDEMETER_INFLUXDB_HOST: "fedemeter-influxdb.{{.NameSpace}}"
     FEDEMETER_INFLUXDB_PORT: "8086"

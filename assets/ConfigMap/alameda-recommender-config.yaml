@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: alameda-recommender-config
-  namespace: federatorai
+  namespace: {{.NameSpace}}
 data:
   config.toml: |-
     [global]

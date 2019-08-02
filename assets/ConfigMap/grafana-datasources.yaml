@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-datasources
-  namespace: federatorai
+  namespace: {{.NameSpace}}
 data:
   gettoken.sh: |-
     #!/usr/bin/env sh
@@ -20,7 +20,7 @@ data:
         "apiVersion": 1,
         "datasources": [
             {
-                "name": "InfluxDB",                  
+                "name": "InfluxDB",
                 "type": "influxdb",
                 "access": "proxy",
                 "url": "https://alameda-influxdb.{{.NameSpace}}.svc:8086",
@@ -51,7 +51,6 @@ data:
                 "readOnly": false,
             }
         ]
-    }      
+    }
 
-  
-  
+
