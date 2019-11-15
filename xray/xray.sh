@@ -394,21 +394,21 @@ kubectl get nodes | grep `hostname` > /dev/null && (
 (
     egrep_all_related_pods=' admission-controller-| alameda-| federatorai-| fedemeter-|prometheus'
     get_command 180 alameda/list "kubectl get pods --all-namespaces"
-    get_command 180 alameda/log "kubectl get deployments --all-namespaces | egrep "${egrep_all_related_pods}" \
+    get_command 180 alameda/log "kubectl get deployments --all-namespaces | egrep \"${egrep_all_related_pods}\" \
                                  | while read ns pod junk; do \
                                      echo \"kubectl -n \${ns} get deployment \${pod} -o yaml > ${workdir}/alameda/deployment.\${ns}.\${pod}.yaml\";\
                                    done | sh -x"
-    get_command 300 alameda/log "kubectl get pods --all-namespaces | egrep "${egrep_all_related_pods}" \
+    get_command 300 alameda/log "kubectl get pods --all-namespaces | egrep \"${egrep_all_related_pods}\" \
                                  | while read ns pod junk; do \
                                      echo \"kubectl -n \${ns} get pod \${pod} -o yaml > ${workdir}/alameda/pod.\${ns}.\${pod}.yaml\";\
                                      echo \"kubectl -n \${ns} logs \${pod} > ${workdir}/alameda/\${ns}.\${pod}.log\";\
                                      echo \"kubectl -n \${ns} logs --previous \${pod} > ${workdir}/alameda/\${ns}.\${pod}.log.1\";\
                                    done | sh -x"
-    get_command 300 alameda/log "kubectl get svc --all-namespaces | egrep "${egrep_all_related_pods}" \
+    get_command 300 alameda/log "kubectl get svc --all-namespaces | egrep \"${egrep_all_related_pods}\" \
                                  | while read ns pod junk; do \
                                      echo \"kubectl -n \${ns} get svc \${pod} -o yaml > ${workdir}/alameda/svc.\${ns}.\${pod}.yaml\";\
                                    done | sh -x"
-     get_command 180 alameda/log "kubectl get configmaps --all-namespaces | egrep "${egrep_all_related_pods}" \
+     get_command 180 alameda/log "kubectl get configmaps --all-namespaces | egrep \"${egrep_all_related_pods}\" \
                                   | while read ns cm junk; do \
                                       echo \"kubectl -n \${ns} get configmap \${cm} -o yaml > ${workdir}/alameda/configmap.\${ns}.\${cm}.yaml\"; \
                                     done | sh -x"
