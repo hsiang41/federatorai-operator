@@ -56,12 +56,15 @@ rules:
   verbs:
   - update
 # Permission for query prometheus under namespace openshift-monitoring
-- apiGroups:
+- verbs:
+  - get
+  - list
+  - watch
+  apiGroups:
   - ""
   resources:
   - namespaces
-  verbs:
-  - get
+  - configmaps
 - apiGroups:
   - apiextensions.k8s.io
   resources:
