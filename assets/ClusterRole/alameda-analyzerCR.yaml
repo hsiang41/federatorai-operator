@@ -3,16 +3,34 @@ kind: ClusterRole
 metadata:
   name: {{.NameSpace}}-alameda-analyzer
 rules:
-- apiGroups:
-  - ""
+# following is taken from Federatorai-operator CSV v0.0.1 clusterPermissions section
+- verbs:
+    - get
+    - create
+    - list
+    - watch
+  apiGroups:
+    - ''
   resources:
-  - configmaps
-  verbs:
-  - get
-- apiGroups:
-  - autoscaling.containers.ai
+    - configmaps
+- verbs:
+    - '*'
+  apiGroups:
+    - analysis.containers.ai
   resources:
-  - "*"
-  verbs:
-  - get
-  - list
+    - '*'
+    - alamedadetections
+- verbs:
+    - get
+    - list
+    - watch
+  apiGroups:
+    - ''
+    - apps
+    - extensions
+  resources:
+    - pods
+    - replicasets
+    - deployments
+
+

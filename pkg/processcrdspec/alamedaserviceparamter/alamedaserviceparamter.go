@@ -180,6 +180,7 @@ var (
 		"CustomResourceDefinition/alamedarecommendationsCRD.yaml",
 		"CustomResourceDefinition/alamedanotificationchannels.yaml",
 		"CustomResourceDefinition/alamedanotificationtopics.yaml",
+		"CustomResourceDefinition/alamedadetectionsCRD.yaml",
 	}
 
 	alamedaScalerCRD = []string{

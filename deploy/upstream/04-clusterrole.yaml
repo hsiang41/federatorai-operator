@@ -18,6 +18,7 @@ rules:
   - "*"
 - apiGroups:
   - autoscaling.containers.ai
+  - analysis.containers.ai
   resources:
   - "*"
   verbs:
