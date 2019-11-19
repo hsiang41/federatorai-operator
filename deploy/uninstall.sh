@@ -22,6 +22,7 @@ remove_all_alamedaservice()
     do
         echo -e "$(tput setaf 2)\nDeleting $servicename in $ns namespace...$(tput sgr 0)"
         kubectl delete alamedaservice $servicename -n $ns
+        kubectl delete clusterrole alameda-gc
         if [ "$?" != "0" ]; then
             echo -e "$(tput setaf 1)Error in removing $servicename in $ns namespace$(tput sgr 0)"
             #exit 2

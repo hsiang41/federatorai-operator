@@ -1,0 +1,64 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    secret.name: alameda-operator-webhook-server-cert
+  creationTimestamp: null
+  name: alameda-operator-validating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: alameda-operator-webhook-service
+      namespace: {{.NameSpace}}      
+      path: /validate-autoscaling-containers-ai-v1alpha1-alamedascaler
+  failurePolicy: Fail
+  name: valamedascaler.containers.ai
+  rules:
+  - apiGroups:
+    - autoscaling.containers.ai
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - alamedascalers
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: alameda-operator-webhook-service
+      namespace: {{.NameSpace}}      
+      path: /validate-autoscaling-containers-ai-v1-deployment
+  failurePolicy: Fail
+  name: vdeployment.containers.ai
+  rules:
+  - apiGroups:    
+    - extensions
+    - apps    
+    apiVersions:  
+    - v1beta1
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - deployments    
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: alameda-operator-webhook-service
+      namespace: {{.NameSpace}}      
+      path: /validate-autoscaling-containers-ai-v1-deploymentconfig
+  failurePolicy: Fail
+  name: vdeploymentconfig.containers.ai
+  rules:
+  - apiGroups:
+    - apps.openshift.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - deploymentconfigs

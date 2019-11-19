@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/pkg/apis/autoscaling/v1alpha1"
@@ -168,6 +169,41 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 		}
 	}
+
+	clusterRoleGC, err := util.GetGCSecret(r.client)
+	if err != nil {
+		log.V(-1).Info("get clusterRole GC failed, retry reconciling AlamedaService",
+			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name",
+			instance.Name, "msg", err.Error())
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+	}
+	hasGCOwner := false
+	for _, or := range instance.GetOwnerReferences() {
+		if strings.ToLower(or.Kind) == strings.ToLower("ClusterRole") {
+			hasGCOwner = true
+			break
+		}
+	}
+	if !hasGCOwner {
+		tmpInstance := &federatoraiv1alpha1.AlamedaService{}
+		if err = r.client.Get(context.TODO(), request.NamespacedName, tmpInstance); err != nil {
+			log.V(-1).Info("get latest alamedaservice failed for setting clusterrole gc",
+				"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+		}
+		if err := controllerutil.SetControllerReference(clusterRoleGC, tmpInstance, r.scheme); err != nil {
+			log.V(-1).Info("set clusterrole gc for alamedaservice failed",
+				"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+		}
+
+		if err := r.client.Update(context.Background(), tmpInstance); err != nil {
+			log.V(-1).Info("update alamedaservice for clusterrole gc failed",
+				"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+		}
+		return reconcile.Result{}, nil
+	}
 	if flag, _ := r.checkAlamedaServiceSpecIsChange(instance, request.NamespacedName); !flag && util.Disable_operand_resource_protection == "true" {
 		log.Info("AlamedaService spec is not changed, skip reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
 		return reconcile.Result{}, nil
@@ -178,6 +214,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		log.V(-1).Info("get namespace failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
+
 	componentConfig = r.newComponentConfig(ns, *instance)
 	installResource := asp.GetInstallResource()
 	if err = r.syncCustomResourceDefinition(instance, asp, installResource); err != nil {
@@ -190,18 +227,23 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	if err := r.syncSecurityContextConstraints(instance, asp, installResource); err != nil {
 		log.V(-1).Info("sync securityContextConstraint failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 	}
-	if err := r.syncClusterRole(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync clusterRole failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+
+	if err := r.syncClusterRole(instance, clusterRoleGC, asp, installResource); err != nil {
+		log.V(-1).Info("sync clusterRole failed, retry reconciling AlamedaService",
+			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncServiceAccount(instance, asp, installResource); err != nil {
 		log.V(-1).Info("sync serviceAccount failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
-	if err := r.syncClusterRoleBinding(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync clusterRoleBinding failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+
+	if err := r.syncClusterRoleBinding(instance, clusterRoleGC, asp, installResource); err != nil {
+		log.V(-1).Info("sync clusterRoleBinding failed, retry reconciling AlamedaService",
+			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
+
 	if err := r.syncRole(instance, asp, installResource); err != nil {
 		log.V(-1).Info("sync Role failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
@@ -226,16 +268,18 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		log.V(-1).Info("sync service failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
-	if err := r.createMutatingWebhookConfiguration(instance, asp, installResource); err != nil {
-		log.V(-1).Info("create MutatingWebhookConfiguration failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
-		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
-	}
-	if err := r.createValidatingWebhookConfiguration(instance, asp, installResource); err != nil {
-		log.V(-1).Info("create ValidatingWebhookConfiguration failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+	if err := r.createMutatingWebhookConfiguration(instance, clusterRoleGC, asp, installResource); err != nil {
+		log.V(-1).Info("create MutatingWebhookConfiguration failed, retry reconciling AlamedaService",
+			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncDeployment(instance, asp, installResource); err != nil {
 		log.V(-1).Info("sync deployment failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+	}
+	if err := r.createValidatingWebhookConfiguration(instance, clusterRoleGC, asp, installResource); err != nil {
+		log.V(-1).Info("create ValidatingWebhookConfiguration failed, retry reconciling AlamedaService",
+			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncStatefulSet(instance, asp, installResource); err != nil {
@@ -398,12 +442,16 @@ func (r *ReconcileAlamedaService) uninstallCustomResourceDefinition(resource *al
 	}
 }
 
-func (r *ReconcileAlamedaService) syncClusterRoleBinding(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
+func (r *ReconcileAlamedaService) syncClusterRoleBinding(instance *federatoraiv1alpha1.AlamedaService,
+	gcIns *rbacv1.ClusterRole, asp *alamedaserviceparamter.AlamedaServiceParamter,
+	resource *alamedaserviceparamter.Resource) error {
 	for _, FileStr := range resource.ClusterRoleBindingList {
 		resourceCRB := componentConfig.NewClusterRoleBinding(FileStr)
-		if err := controllerutil.SetControllerReference(instance, resourceCRB, r.scheme); err != nil {
+		//cluster-scoped resource must not have a namespace-scoped owner
+		if err := controllerutil.SetControllerReference(gcIns, resourceCRB, r.scheme); err != nil {
 			return errors.Errorf("Fail resourceCRB SetControllerReference: %s", err.Error())
 		}
+
 		foundCRB := &rbacv1.ClusterRoleBinding{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: resourceCRB.Name}, foundCRB)
 		if err != nil && k8sErrors.IsNotFound(err) {
@@ -556,12 +604,16 @@ func (r *ReconcileAlamedaService) syncDaemonSet(instance *federatoraiv1alpha1.Al
 	return nil
 }
 
-func (r *ReconcileAlamedaService) syncClusterRole(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
+func (r *ReconcileAlamedaService) syncClusterRole(instance *federatoraiv1alpha1.AlamedaService,
+	gcIns *rbacv1.ClusterRole, asp *alamedaserviceparamter.AlamedaServiceParamter,
+	resource *alamedaserviceparamter.Resource) error {
 	for _, FileStr := range resource.ClusterRoleList {
 		resourceCR := componentConfig.NewClusterRole(FileStr)
-		if err := controllerutil.SetControllerReference(instance, resourceCR, r.scheme); err != nil {
+		//cluster-scoped resource must not have a namespace-scoped owner
+		if err := controllerutil.SetControllerReference(gcIns, resourceCR, r.scheme); err != nil {
 			return errors.Errorf("Fail resourceCR SetControllerReference: %s", err.Error())
 		}
+
 		foundCR := &rbacv1.ClusterRole{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: resourceCR.Name}, foundCR)
 		if err != nil && k8sErrors.IsNotFound(err) {
@@ -748,6 +800,23 @@ func (r *ReconcileAlamedaService) createSecret(instance *federatoraiv1alpha1.Ala
 		return errors.Errorf("get secret %s/%s failed: %s", secret.Namespace, secret.Name, err.Error())
 	}
 
+	operatorWebhookServiceAsset := alamedaserviceparamter.GetAlamedaOperatorWebhookService()
+	operatorWebhookService := componentConfig.NewService(operatorWebhookServiceAsset)
+	operatorWebhookServiceAddress := util.GetServiceDNS(operatorWebhookService)
+	operatorWebhookServiceCertSecretAsset := alamedaserviceparamter.GetAlamedaOperatorWebhookServerCertSecret()
+	operatorWebhookServiceSecret, err := componentConfig.NewTLSSecret(operatorWebhookServiceCertSecretAsset, operatorWebhookServiceAddress)
+	if err != nil {
+		return errors.Errorf("build secret failed: %s", err.Error())
+	}
+	if err := controllerutil.SetControllerReference(instance, secret, r.scheme); err != nil {
+		return errors.Errorf("set controller reference to secret %s/%s failed: %s", secret.Namespace, secret.Name, err.Error())
+	}
+	err = r.client.Create(context.TODO(), operatorWebhookServiceSecret)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		log.Info("create secret failed: secret is already exists", "secret.Namespace", secret.Namespace, "secret.Name", secret.Name)
+	} else if err != nil {
+		return errors.Errorf("get secret %s/%s failed: %s", secret.Namespace, secret.Name, err.Error())
+	}
 	return nil
 }
 
@@ -841,13 +910,16 @@ func (r *ReconcileAlamedaService) getSecret(namespace, name string) (corev1.Secr
 	return secret, nil
 }
 
-func (r *ReconcileAlamedaService) createMutatingWebhookConfiguration(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
+func (r *ReconcileAlamedaService) createMutatingWebhookConfiguration(instance *federatoraiv1alpha1.AlamedaService,
+	gcIns *rbacv1.ClusterRole, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
 	for _, fileString := range resource.MutatingWebhookConfigurationList {
 		mutatingWebhookConfiguration, err := componentConfig.NewMutatingWebhookConfiguration(fileString)
 		if err != nil {
 			return errors.Wrap(err, "new MutatingWebhookConfiguration failed")
 		}
-		if err := controllerutil.SetControllerReference(instance, mutatingWebhookConfiguration, r.scheme); err != nil {
+
+		//cluster-scoped resource must not have a namespace-scoped owner
+		if err := controllerutil.SetControllerReference(gcIns, mutatingWebhookConfiguration, r.scheme); err != nil {
 			return errors.Errorf("Fail MutatingWebhookConfiguration SetControllerReference: %s", err.Error())
 		}
 
@@ -871,13 +943,15 @@ func (r *ReconcileAlamedaService) createMutatingWebhookConfiguration(instance *f
 	return nil
 }
 
-func (r *ReconcileAlamedaService) createValidatingWebhookConfiguration(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
+func (r *ReconcileAlamedaService) createValidatingWebhookConfiguration(instance *federatoraiv1alpha1.AlamedaService,
+	gcIns *rbacv1.ClusterRole, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
 	for _, fileString := range resource.ValidatingWebhookConfigurationList {
 		validatingWebhookConfiguration, err := componentConfig.NewValidatingWebhookConfiguration(fileString)
 		if err != nil {
 			return errors.Wrap(err, "new ValidatingWebhookConfigurationList failed")
 		}
-		if err := controllerutil.SetControllerReference(instance, validatingWebhookConfiguration, r.scheme); err != nil {
+		//cluster-scoped resource must not have a namespace-scoped owner
+		if err := controllerutil.SetControllerReference(gcIns, validatingWebhookConfiguration, r.scheme); err != nil {
 			return errors.Errorf("Fail ValidatingWebhookConfiguration SetControllerReference: %s", err.Error())
 		}
 
@@ -1357,9 +1431,12 @@ func (r *ReconcileAlamedaService) needToReconcile(alamedaService *federatoraiv1a
 	return false, nil
 }
 
-func (r *ReconcileAlamedaService) getAlamedaServiceLock(ns, name string) (rbacv1.ClusterRole, error) {
-	lock := rbacv1.ClusterRole{}
-	err := r.client.Get(context.Background(), types.NamespacedName{Name: name}, &lock)
+func (r *ReconcileAlamedaService) getAlamedaServiceLock(ns, name string) (rbacv1.Role, error) {
+	lock := rbacv1.Role{}
+	err := r.client.Get(context.Background(), types.NamespacedName{
+		Name:      name,
+		Namespace: ns,
+	}, &lock)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return lock, err
@@ -1370,9 +1447,10 @@ func (r *ReconcileAlamedaService) getAlamedaServiceLock(ns, name string) (rbacv1
 }
 
 func (r *ReconcileAlamedaService) createAlamedaServiceLock(alamedaService *federatoraiv1alpha1.AlamedaService) error {
-	lock := rbacv1.ClusterRole{
+	lock := rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: alamedaServiceLockName,
+			Name:      alamedaServiceLockName,
+			Namespace: alamedaService.GetNamespace(),
 		},
 	}
 	if err := controllerutil.SetControllerReference(alamedaService, &lock, r.scheme); err != nil {
@@ -1411,7 +1489,7 @@ func (r *ReconcileAlamedaService) updateAlamedaServiceActivation(alamedaService 
 	return nil
 }
 
-func lockIsOwnedByAlamedaService(lock rbacv1.ClusterRole, alamedaService *federatoraiv1alpha1.AlamedaService) bool {
+func lockIsOwnedByAlamedaService(lock rbacv1.Role, alamedaService *federatoraiv1alpha1.AlamedaService) bool {
 
 	for _, ownerReference := range lock.OwnerReferences {
 		if ownerReference.UID == alamedaService.UID {

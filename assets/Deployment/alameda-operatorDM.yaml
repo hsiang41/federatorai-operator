@@ -42,10 +42,6 @@ spec:
               fieldPath: metadata.name
         - name: ALAMEDA_OPERATOR_DATAHUB_ADDRESS
           value: "alameda-datahub.{{.NameSpace}}.svc:50050"
-        volumeMounts:
-        - name: podinfo
-          mountPath: /etc/podinfo
-          readOnly: false
         readinessProbe:
           exec:
             command:
@@ -62,14 +58,16 @@ spec:
           initialDelaySeconds: 5
           failureThreshold: 20
           periodSeconds: 5
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
       volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: alameda-operator-webhook-server-cert
       - name:  alameda-operator-data-storage
       - name:  alameda-operator-log-storage
-      - name: podinfo
-        downwardAPI:
-          items:
-          - path: "labels"
-            fieldRef:
-              fieldPath: metadata.labels
       serviceAccount: alameda-operator
       serviceAccountName: alameda-operator

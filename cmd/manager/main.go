@@ -79,7 +79,7 @@ func init() {
 func initFlags() {
 
 	federatoraiOperatorFlagSet.Int32Var(&metricsPort, "metrics.port", 8383, "port to export metrics data")
-	federatoraiOperatorFlagSet.StringVar(&configurationFilePath, "config", "/etc/federatorai/operator/operator.yml", "File path to federatorai-operator coniguration")
+	federatoraiOperatorFlagSet.StringVar(&configurationFilePath, "config", "/etc/federatorai/operator/operator.toml", "File path to federatorai-operator coniguration")
 
 	pflag.CommandLine.AddFlagSet(federatoraiOperatorFlagSet)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -121,14 +121,29 @@ func mergeViperValueWithDefaultConfig() {
 
 func initLogger() {
 
-	fedOperatorConfig.Log.AppendOutput(defaultLogOutputPath)
+	logPaths := viper.GetStringSlice("log.outputPaths")
+	if len(logPaths) == 0 {
+		fedOperatorConfig.Log.AppendOutput(defaultLogOutputPath)
+	} else {
+		for _, logPath := range logPaths {
+			fedOperatorConfig.Log.AppendOutput(logPath)
+		}
+	}
 	logger, err := fedOperatorLog.NewZaprLogger(fedOperatorConfig.Log)
 	if err != nil {
 		panic(err)
 	}
 	logf.SetLogger(logger)
 
-	fedOperatorConfig.GRPC.Log.AppendOutput(defaultLogOutputPath)
+	grpcLogPaths := viper.GetStringSlice("grpc.log.outputPaths")
+	if len(grpcLogPaths) == 0 {
+		fedOperatorConfig.GRPC.Log.AppendOutput(defaultLogOutputPath)
+	} else {
+		for _, grpcLogPath := range grpcLogPaths {
+			fedOperatorConfig.GRPC.Log.AppendOutput(grpcLogPath)
+		}
+	}
+
 	grpcLogger, err := fedOperatorLog.NewZapLogger(fedOperatorConfig.GRPC.Log)
 	if err != nil {
 		panic(err)
@@ -280,7 +295,8 @@ func createCustomeResourceDefinitions(clientConfig *rest.Config) error {
 
 		crd := resourceread.ReadCustomResourceDefinitionV1Beta1(assetBytes)
 		addCRDToRegisterdAPIResources(crd)
-		_, err = apiExtensionsClientset.Apiextensions().CustomResourceDefinitions().Create(crd)
+		//use apiExtensionsClientset.ApiextensionsV1() in k8s 1.19 or later
+		_, err = apiExtensionsClientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 		if err != nil && k8sapierrors.IsAlreadyExists(err) {
 			log.V(-1).Info("CustomResourceDefinition is existing in cluster, will not create or update it.", "CustomResourceDefinition name", crd.Name)
 			continue

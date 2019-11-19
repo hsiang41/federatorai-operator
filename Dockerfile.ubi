@@ -1,11 +1,11 @@
-FROM openshift/origin-release:golang-1.11 as builder
+FROM openshift/origin-release:golang-1.13 as builder
 WORKDIR /go/src/github.com/containers-ai/federatorai-operator
 COPY . .
 ENV NO_DOCKER=1
 ENV BUILD_DEST=/go/bin/federatorai-operator
 RUN unset VERSION && make build
 
-FROM registry.access.redhat.com/ubi7/ubi-minimal
+FROM registry.access.redhat.com/ubi8/ubi-minimal
 ENV SUMMARY="Federator.ai Operator is an operator that manages Federator.ai components for an OpenShift cluster" \
     DESCRIPTION="Federator.ai Operator is an operator that manages Federator.ai components for an OpenShift cluster" \
     NAME="Federator.ai Operator" \
@@ -26,7 +26,7 @@ LABEL summary="$SUMMARY" \
 
 COPY --from=builder /go/src/github.com/containers-ai/federatorai-operator/LICENSE /licenses/
 COPY --from=builder /go/bin/federatorai-operator /usr/bin/
-COPY --from=builder /go/src/github.com/containers-ai/federatorai-operator/etc/operator.yml /etc/federatorai/operator/operator.yml
+COPY --from=builder /go/src/github.com/containers-ai/federatorai-operator/etc/operator.toml /etc/federatorai/operator/operator.toml
 # COPY --from=builder /go/src/github.com/containers-ai/federatorai-operator/install /manifests
 COPY --from=builder /go/src/github.com/containers-ai/federatorai-operator/xray/xray.sh /xray.sh
 

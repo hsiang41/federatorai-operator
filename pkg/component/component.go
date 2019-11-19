@@ -2,12 +2,20 @@ package component
 
 import (
 	"bytes"
+	"crypto"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"html/template"
+	"math"
+	"math/big"
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
@@ -290,7 +298,7 @@ func (c ComponentConfig) NewAdmissionControllerSecret() (*corev1.Secret, error) 
 		return nil, errors.Wrap(err, "failed to buiild admission-controller secret")
 	}
 
-	caKey, err := cert.NewPrivateKey()
+	caKey, err := NewPrivateKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "new ca private key failed")
 	}
@@ -301,7 +309,7 @@ func (c ComponentConfig) NewAdmissionControllerSecret() (*corev1.Secret, error) 
 		return nil, errors.Wrap(err, "new ca cert failed")
 	}
 
-	admctlKey, err := cert.NewPrivateKey()
+	admctlKey, err := NewPrivateKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "new admctl private key failed")
 	}
@@ -313,7 +321,7 @@ func (c ComponentConfig) NewAdmissionControllerSecret() (*corev1.Secret, error) 
 			x509.ExtKeyUsageServerAuth,
 		},
 	}
-	admctlCert, err := cert.NewSignedCert(admctlCertCfg, admctlKey, caCert, caKey)
+	admctlCert, err := NewSignedCert(admctlCertCfg, admctlKey, caCert, caKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "new admctl cert failed")
 	}
@@ -321,9 +329,9 @@ func (c ComponentConfig) NewAdmissionControllerSecret() (*corev1.Secret, error) 
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
 	}
-	secret.Data["ca.crt"] = cert.EncodeCertPEM(caCert)
-	secret.Data["tls.crt"] = cert.EncodeCertPEM(admctlCert)
-	secret.Data["tls.key"] = cert.EncodePrivateKeyPEM(admctlKey)
+	secret.Data["ca.crt"] = EncodeCertPEM(caCert)
+	secret.Data["tls.crt"] = EncodeCertPEM(admctlCert)
+	secret.Data["tls.key"] = EncodePrivateKeyPEM(admctlKey)
 
 	return secret, nil
 }
@@ -335,7 +343,7 @@ func (c ComponentConfig) NewTLSSecret(assetFile, cn string) (*corev1.Secret, err
 		return nil, errors.Wrap(err, "failed to buiild secret")
 	}
 
-	caKey, err := cert.NewPrivateKey()
+	caKey, err := NewPrivateKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "new ca private key failed")
 	}
@@ -346,7 +354,7 @@ func (c ComponentConfig) NewTLSSecret(assetFile, cn string) (*corev1.Secret, err
 		return nil, errors.Wrap(err, "new ca cert failed")
 	}
 
-	privateKey, err := cert.NewPrivateKey()
+	privateKey, err := NewPrivateKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "new private key failed")
 	}
@@ -358,7 +366,7 @@ func (c ComponentConfig) NewTLSSecret(assetFile, cn string) (*corev1.Secret, err
 			x509.ExtKeyUsageServerAuth,
 		},
 	}
-	certificate, err := cert.NewSignedCert(certCfg, privateKey, caCert, caKey)
+	certificate, err := NewSignedCert(certCfg, privateKey, caCert, caKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "new certificate failed")
 	}
@@ -366,9 +374,9 @@ func (c ComponentConfig) NewTLSSecret(assetFile, cn string) (*corev1.Secret, err
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
 	}
-	secret.Data["ca.crt"] = cert.EncodeCertPEM(caCert)
-	secret.Data["tls.crt"] = cert.EncodeCertPEM(certificate)
-	secret.Data["tls.key"] = cert.EncodePrivateKeyPEM(privateKey)
+	secret.Data["ca.crt"] = EncodeCertPEM(caCert)
+	secret.Data["tls.crt"] = EncodeCertPEM(certificate)
+	secret.Data["tls.key"] = EncodePrivateKeyPEM(privateKey)
 
 	return secret, nil
 }
@@ -604,4 +612,63 @@ func overwritePodSecurityContextFromOKDPodSecurityContext(psc, okdPSC corev1.Pod
 	copyPSC.FSGroup = copyOKDPSC.FSGroup
 
 	return *copyPSC
+}
+
+const (
+	rsaKeySize             = 2048
+	duration365d           = time.Hour * 24 * 365
+	CertificateBlockType   = "CERTIFICATE"
+	RSAPrivateKeyBlockType = "RSA PRIVATE KEY"
+)
+
+func NewPrivateKey() (*rsa.PrivateKey, error) {
+	return rsa.GenerateKey(cryptorand.Reader, rsaKeySize)
+}
+
+func NewSignedCert(cfg cert.Config, key crypto.Signer, caCert *x509.Certificate, caKey crypto.Signer) (*x509.Certificate, error) {
+	serial, err := cryptorand.Int(cryptorand.Reader, new(big.Int).SetInt64(math.MaxInt64))
+	if err != nil {
+		return nil, err
+	}
+	if len(cfg.CommonName) == 0 {
+		return nil, errors.New("must specify a CommonName")
+	}
+	if len(cfg.Usages) == 0 {
+		return nil, errors.New("must specify at least one ExtKeyUsage")
+	}
+
+	certTmpl := x509.Certificate{
+		Subject: pkix.Name{
+			CommonName:   cfg.CommonName,
+			Organization: cfg.Organization,
+		},
+		DNSNames:     cfg.AltNames.DNSNames,
+		IPAddresses:  cfg.AltNames.IPs,
+		SerialNumber: serial,
+		NotBefore:    caCert.NotBefore,
+		NotAfter:     time.Now().Add(duration365d).UTC(),
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  cfg.Usages,
+	}
+	certDERBytes, err := x509.CreateCertificate(cryptorand.Reader, &certTmpl, caCert, key.Public(), caKey)
+	if err != nil {
+		return nil, err
+	}
+	return x509.ParseCertificate(certDERBytes)
+}
+
+func EncodeCertPEM(cert *x509.Certificate) []byte {
+	block := pem.Block{
+		Type:  CertificateBlockType,
+		Bytes: cert.Raw,
+	}
+	return pem.EncodeToMemory(&block)
+}
+
+func EncodePrivateKeyPEM(key *rsa.PrivateKey) []byte {
+	block := pem.Block{
+		Type:  RSAPrivateKeyBlockType,
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+	return pem.EncodeToMemory(&block)
 }

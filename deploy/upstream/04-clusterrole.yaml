@@ -104,6 +104,7 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - clusterroles
+  - clusterroles/finalizers
   - clusterrolebindings
   - roles
   - rolebindings

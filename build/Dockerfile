@@ -8,7 +8,7 @@ ENV OPERATOR=/usr/local/bin/federatorai-operator \
 COPY build/_output/bin/federatorai-operator ${OPERATOR}
 
 COPY build/bin /usr/local/bin
-COPY etc/operator.yml /etc/federatorai/operator/operator.yml
+COPY etc/operator.toml /etc/federatorai/operator/operator.toml
 RUN  /usr/local/bin/user_setup
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]

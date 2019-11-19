@@ -44,6 +44,9 @@ var (
 		"ClusterRole/alameda-operatorCR.yaml",
 		"ServiceAccount/alameda-operatorSA.yaml",
 		"Deployment/alameda-operatorDM.yaml",
+		"Secret/alameda-operator-webhook-server-cert.yaml",
+		"Service/alameda-operator-webhook-service.yaml",
+		"ValidatingWebhookConfiguration/alameda-operator-validating-webhook-configuration.yaml",
 	}
 
 	influxDBList = []string{
@@ -288,6 +291,16 @@ func GetAlamedaNotifierWebhookService() string {
 // GetAlamedaNotifierWebhookServerCertSecret returns secret asset name of alameda-notifier-webhook-server-cert
 func GetAlamedaNotifierWebhookServerCertSecret() string {
 	return "Secret/alameda-notifier-webhook-server-cert.yaml"
+}
+
+// GetAlamedaOperatorWebhookService returns service asset name of alameda-operator-webhook-service
+func GetAlamedaOperatorWebhookService() string {
+	return "Service/alameda-operator-webhook-service.yaml"
+}
+
+// GetAlamedaOperatorWebhookServerCertSecret returns secret asset name of alameda-operator-webhook-server-cert
+func GetAlamedaOperatorWebhookServerCertSecret() string {
+	return "Secret/alameda-operator-webhook-server-cert.yaml"
 }
 
 // GetCustomResourceDefinitions returns crd assets' name

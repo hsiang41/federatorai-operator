@@ -1,0 +1,15 @@
+gcClusterRole = "alameda-gc"
+
+[requirements]
+
+[metrics]
+port = 8383
+
+[log]
+outputLevel = "info" # one of 'debug', 'info', 'warn', 'error' (default info)
+outputPaths = ["stdout", "/var/log/alameda/federatorai-operator.log"]
+
+[grpc]
+  [grpc.log]
+  outputLevel = "info" # one of 'debug', 'info', 'warn', 'error' (default info)
+  outputPaths = []

@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	monitoring "github.com/coreos/prometheus-operator/pkg/apis/monitoring"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringclient "github.com/coreos/prometheus-operator/pkg/client/versioned"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
@@ -30,8 +31,8 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	appsv1 "k8s.io/api/apps/v1beta2"
-	"k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -41,6 +42,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -73,13 +75,15 @@ type Config struct {
 	Host                         string
 	LocalHost                    string
 	ConfigReloaderImage          string
+	ConfigReloaderCPU            string
+	ConfigReloaderMemory         string
 	AlertmanagerDefaultBaseImage string
-	Namespaces                   []string
+	Namespaces                   prometheusoperator.Namespaces
 	Labels                       prometheusoperator.Labels
 	CrdKinds                     monitoringv1.CrdKinds
-	CrdGroup                     string
 	EnableValidation             bool
 	ManageCRDs                   bool
+	AlertManagerSelector         string
 }
 
 // New creates a new controller.
@@ -114,30 +118,36 @@ func New(c prometheusoperator.Config, logger log.Logger) (*Operator, error) {
 			Host:                         c.Host,
 			LocalHost:                    c.LocalHost,
 			ConfigReloaderImage:          c.ConfigReloaderImage,
+			ConfigReloaderCPU:            c.ConfigReloaderCPU,
+			ConfigReloaderMemory:         c.ConfigReloaderMemory,
 			AlertmanagerDefaultBaseImage: c.AlertmanagerDefaultBaseImage,
 			Namespaces:                   c.Namespaces,
-			CrdGroup:                     c.CrdGroup,
 			CrdKinds:                     c.CrdKinds,
 			Labels:                       c.Labels,
 			EnableValidation:             c.EnableValidation,
 			ManageCRDs:                   c.ManageCRDs,
+			AlertManagerSelector:         c.AlertManagerSelector,
 		},
 	}
 
 	o.alrtInf = cache.NewSharedIndexInformer(
-		listwatch.MultiNamespaceListerWatcher(o.config.Namespaces, func(namespace string) cache.ListerWatcher {
+		listwatch.MultiNamespaceListerWatcher(o.logger, o.config.Namespaces.AlertmanagerAllowList, o.config.Namespaces.DenyList, func(namespace string) cache.ListerWatcher {
 			return &cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+					options.LabelSelector = o.config.AlertManagerSelector
 					return o.mclient.MonitoringV1().Alertmanagers(namespace).List(options)
 				},
-				WatchFunc: o.mclient.MonitoringV1().Alertmanagers(namespace).Watch,
+				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					options.LabelSelector = o.config.AlertManagerSelector
+					return o.mclient.MonitoringV1().Alertmanagers(namespace).Watch(options)
+				},
 			}
 		}),
 		&monitoringv1.Alertmanager{}, resyncPeriod, cache.Indexers{},
 	)
 	o.ssetInf = cache.NewSharedIndexInformer(
-		listwatch.MultiNamespaceListerWatcher(o.config.Namespaces, func(namespace string) cache.ListerWatcher {
-			return cache.NewListWatchFromClient(o.kclient.AppsV1beta2().RESTClient(), "statefulsets", namespace, fields.Everything())
+		listwatch.MultiNamespaceListerWatcher(o.logger, o.config.Namespaces.AlertmanagerAllowList, o.config.Namespaces.DenyList, func(namespace string) cache.ListerWatcher {
+			return cache.NewListWatchFromClient(o.kclient.AppsV1().RESTClient(), "statefulsets", namespace, fields.Everything())
 		}),
 		&appsv1.StatefulSet{}, resyncPeriod, cache.Indexers{},
 	)
@@ -452,12 +462,12 @@ func (c *Operator) sync(key string) error {
 	level.Info(c.logger).Log("msg", "sync alertmanager", "key", key)
 
 	// Create governing service if it doesn't exist.
-	svcClient := c.kclient.Core().Services(am.Namespace)
+	svcClient := c.kclient.CoreV1().Services(am.Namespace)
 	if err = k8sutil.CreateOrUpdateService(svcClient, makeStatefulSetService(am, c.config)); err != nil {
 		return errors.Wrap(err, "synchronizing governing service failed")
 	}
 
-	ssetClient := c.kclient.AppsV1beta2().StatefulSets(am.Namespace)
+	ssetClient := c.kclient.AppsV1().StatefulSets(am.Namespace)
 	// Ensure we have a StatefulSet running Alertmanager deployed.
 	obj, exists, err = c.ssetInf.GetIndexer().GetByKey(alertmanagerKeyToStatefulSetKey(key))
 	if err != nil {
@@ -511,11 +521,11 @@ func ListOptions(name string) metav1.ListOptions {
 func AlertmanagerStatus(kclient kubernetes.Interface, a *monitoringv1.Alertmanager) (*monitoringv1.AlertmanagerStatus, []v1.Pod, error) {
 	res := &monitoringv1.AlertmanagerStatus{Paused: a.Spec.Paused}
 
-	pods, err := kclient.Core().Pods(a.Namespace).List(ListOptions(a.Name))
+	pods, err := kclient.CoreV1().Pods(a.Namespace).List(ListOptions(a.Name))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "retrieving pods of failed")
 	}
-	sset, err := kclient.AppsV1beta2().StatefulSets(a.Namespace).Get(statefulSetNameFromAlertmanagerName(a.Name), metav1.GetOptions{})
+	sset, err := kclient.AppsV1().StatefulSets(a.Namespace).Get(statefulSetNameFromAlertmanagerName(a.Name), metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "retrieving stateful set failed")
 	}
@@ -576,13 +586,13 @@ func (c *Operator) destroyAlertmanager(key string) error {
 	*sset.Spec.Replicas = 0
 
 	// Update the replica count to 0 and wait for all pods to be deleted.
-	ssetClient := c.kclient.AppsV1beta2().StatefulSets(sset.Namespace)
+	ssetClient := c.kclient.AppsV1().StatefulSets(sset.Namespace)
 
 	if _, err := ssetClient.Update(sset); err != nil {
 		return errors.Wrap(err, "updating statefulset for scale-down failed")
 	}
 
-	podClient := c.kclient.Core().Pods(sset.Namespace)
+	podClient := c.kclient.CoreV1().Pods(sset.Namespace)
 
 	// TODO(fabxc): temporary solution until StatefulSet status provides
 	// necessary info to know whether scale-down completed.
@@ -607,7 +617,7 @@ func (c *Operator) destroyAlertmanager(key string) error {
 
 func (c *Operator) createCRDs() error {
 	crds := []*extensionsobj.CustomResourceDefinition{
-		k8sutil.NewCustomResourceDefinition(c.config.CrdKinds.Alertmanager, c.config.CrdGroup, c.config.Labels.LabelsMap, c.config.EnableValidation),
+		k8sutil.NewCustomResourceDefinition(c.config.CrdKinds.Alertmanager, monitoring.GroupName, c.config.Labels.LabelsMap, c.config.EnableValidation),
 	}
 
 	crdClient := c.crdclient.ApiextensionsV1beta1().CustomResourceDefinitions()
@@ -638,7 +648,7 @@ func (c *Operator) createCRDs() error {
 	}{
 		{
 			"Alertmanager",
-			listwatch.MultiNamespaceListerWatcher(c.config.Namespaces, func(namespace string) cache.ListerWatcher {
+			listwatch.MultiNamespaceListerWatcher(c.logger, c.config.Namespaces.AlertmanagerAllowList, c.config.Namespaces.DenyList, func(namespace string) cache.ListerWatcher {
 				return &cache.ListWatch{
 					ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 						return c.mclient.MonitoringV1().Alertmanagers(namespace).List(options)

@@ -2,7 +2,7 @@ package resourceread
 
 import (
 	"github.com/pkg/errors"
-
+	// use k8s.io/api/admissionregistration/v1 in k8s 1.19 or later
 	"k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
