@@ -12,7 +12,7 @@ webhooks:
       name: alameda-operator-webhook-service
       namespace: {{.NameSpace}}      
       path: /validate-autoscaling-containers-ai-v1alpha1-alamedascaler
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: valamedascaler.containers.ai
   rules:
   - apiGroups:
@@ -30,7 +30,7 @@ webhooks:
       name: alameda-operator-webhook-service
       namespace: {{.NameSpace}}      
       path: /validate-autoscaling-containers-ai-v1-deployment
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vdeployment.containers.ai
   rules:
   - apiGroups:    
@@ -50,7 +50,7 @@ webhooks:
       name: alameda-operator-webhook-service
       namespace: {{.NameSpace}}      
       path: /validate-autoscaling-containers-ai-v1-deploymentconfig
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vdeploymentconfig.containers.ai
   rules:
   - apiGroups:
