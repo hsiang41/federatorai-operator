@@ -309,11 +309,11 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		log.V(-1).Info("sync DaemonSet failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
-	if err := r.createAlamedaNotificationChannels(instance, installResource); err != nil {
+	if err := r.createAlamedaNotificationChannels(clusterRoleGC, installResource); err != nil {
 		log.V(-1).Info("create AlamedaNotificationChannels failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
 	}
-	if err := r.createAlamedaNotificationTopics(instance, installResource); err != nil {
+	if err := r.createAlamedaNotificationTopics(clusterRoleGC, installResource); err != nil {
 		log.V(-1).Info("create AlamedaNotificationTopic failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
 	}
@@ -485,13 +485,13 @@ func (r *ReconcileAlamedaService) syncClusterRoleBinding(instance *federatoraiv1
 	return nil
 }
 
-func (r *ReconcileAlamedaService) createAlamedaNotificationChannels(instance *federatoraiv1alpha1.AlamedaService, resource *alamedaserviceparamter.Resource) error {
+func (r *ReconcileAlamedaService) createAlamedaNotificationChannels(owner metav1.Object, resource *alamedaserviceparamter.Resource) error {
 	for _, file := range resource.AlamedaNotificationChannelList {
 		src, err := componentConfig.NewAlamedaNotificationChannel(file)
 		if err != nil {
 			return errors.Errorf("get AlamedaNotificationChannel failed: file: %s, error: %s", file, err.Error())
 		}
-		if err := controllerutil.SetControllerReference(instance, src, r.scheme); err != nil {
+		if err := controllerutil.SetControllerReference(owner, src, r.scheme); err != nil {
 			return errors.Errorf("Fail AlamedaNotificationChannel SetControllerReference: %s", err.Error())
 		}
 		err = r.client.Create(context.TODO(), src)
@@ -502,13 +502,13 @@ func (r *ReconcileAlamedaService) createAlamedaNotificationChannels(instance *fe
 	return nil
 }
 
-func (r *ReconcileAlamedaService) createAlamedaNotificationTopics(instance *federatoraiv1alpha1.AlamedaService, resource *alamedaserviceparamter.Resource) error {
+func (r *ReconcileAlamedaService) createAlamedaNotificationTopics(owner metav1.Object, resource *alamedaserviceparamter.Resource) error {
 	for _, file := range resource.AlamedaNotificationTopic {
 		src, err := componentConfig.NewAlamedaNotificationTopic(file)
 		if err != nil {
 			return errors.Errorf("get AlamedaNotificationTopic failed: file: %s, error: %s", file, err.Error())
 		}
-		if err := controllerutil.SetControllerReference(instance, src, r.scheme); err != nil {
+		if err := controllerutil.SetControllerReference(owner, src, r.scheme); err != nil {
 			return errors.Errorf("Fail AlamedaNotificationTopic SetControllerReference: %s", err.Error())
 		}
 		err = r.client.Create(context.TODO(), src)
