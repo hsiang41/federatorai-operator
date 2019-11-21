@@ -1489,8 +1489,20 @@ func (r *ReconcileAlamedaService) deleteAlamedaServiceLock(ctx context.Context) 
 }
 
 func isAlamedaServiceLockOwnedByAlamedaService(lock rbacv1.ClusterRole, alamedaService federatoraiv1alpha1.AlamedaService) bool {
-	return lock.ObjectMeta.Annotations != nil &&
+
+	// For backward compatibility, keep previous logic that descides wheather lock is owned by AlamedaSerivce
+	old := false
+	for _, ownerReference := range lock.OwnerReferences {
+		if ownerReference.UID == alamedaService.UID {
+			old = true
+			break
+		}
+	}
+
+	new := lock.ObjectMeta.Annotations != nil &&
 		lock.ObjectMeta.Annotations[alamedaServiceLockAnnotationKey] == fmt.Sprintf("%s/%s", alamedaService.Namespace, alamedaService.Name)
+
+	return old || new
 }
 
 func (r *ReconcileAlamedaService) updateAlamedaServiceActivation(alamedaService *federatoraiv1alpha1.AlamedaService, active bool) error {
