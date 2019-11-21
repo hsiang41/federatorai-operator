@@ -218,7 +218,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	if err = r.syncCustomResourceDefinition(instance, asp, installResource); err != nil {
 		log.Error(err, "create crd failed")
 	}
-	if err := r.syncPodSecurityPolicy(instance, asp, installResource); err != nil {
+	if err := r.syncPodSecurityPolicy(instance, clusterRoleGC, asp, installResource); err != nil {
 		log.V(-1).Info("sync podSecurityPolicy failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
@@ -539,10 +539,11 @@ func (r *ReconcileAlamedaService) createAlamedaNotificationTopics(owner metav1.O
 	return nil
 }
 
-func (r *ReconcileAlamedaService) syncPodSecurityPolicy(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
+func (r *ReconcileAlamedaService) syncPodSecurityPolicy(instance *federatoraiv1alpha1.AlamedaService,
+	gcIns *rbacv1.ClusterRole, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
 	for _, FileStr := range resource.PodSecurityPolicyList {
 		resourcePSP := componentConfig.NewPodSecurityPolicy(FileStr)
-		if err := controllerutil.SetControllerReference(instance, resourcePSP, r.scheme); err != nil {
+		if err := controllerutil.SetControllerReference(gcIns, resourcePSP, r.scheme); err != nil {
 			return errors.Errorf("Fail resourcePSP SetControllerReference: %s", err.Error())
 		}
 		foundPSP := &v1beta1.PodSecurityPolicy{}
