@@ -209,8 +209,10 @@ func misMatchTemplatePodSpec(modify *bool, clusterDep, sourceDep *corev1.PodSpec
 	misMatchContainers(modify, clusterDep.InitContainers, sourceDep.InitContainers)
 	misMatchContainers(modify, clusterDep.Containers, sourceDep.Containers)
 	for sourceIndex, sourceVolumeValue := range sourceDep.Volumes {
+		isSourceVolumeExistInClusterDep := false
 		for clusterIndex, clusterVolumeValue := range clusterDep.Volumes {
 			if clusterVolumeValue.Name == sourceVolumeValue.Name {
+				isSourceVolumeExistInClusterDep = true
 				if sourceDep.Volumes[sourceIndex].VolumeSource.Secret != nil {
 					if resourceEmpty(sourceDep.Volumes[sourceIndex].VolumeSource.Secret.DefaultMode) {
 						sourceDep.Volumes[sourceIndex].VolumeSource.Secret.DefaultMode = okdDeploymentDefaultDefaultMode
@@ -238,7 +240,11 @@ func misMatchTemplatePodSpec(modify *bool, clusterDep, sourceDep *corev1.PodSpec
 					log.V(-1).Info("change VolumeSource")
 					clusterDep.Volumes[clusterIndex].VolumeSource = sourceDep.Volumes[sourceIndex].VolumeSource
 				}
+				break
 			}
+		}
+		if !isSourceVolumeExistInClusterDep {
+			clusterDep.Volumes = append(clusterDep.Volumes, sourceVolumeValue)
 		}
 	}
 }
