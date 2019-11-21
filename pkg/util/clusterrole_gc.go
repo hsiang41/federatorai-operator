@@ -10,7 +10,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func GetGCSecret(clnt client.Client) (*rbacv1.ClusterRole, error) {
+func GetGCSecret(ctx context.Context, clnt client.Client) (rbacv1.ClusterRole, error) {
+	name := "alameda-gc"
+	if viper.IsSet("gcClusterRole") {
+		name = viper.GetString("gcClusterRole")
+	}
+	clusterRole := rbacv1.ClusterRole{}
+
+	if err := clnt.Get(ctx, client.ObjectKey{Name: name}, &clusterRole); err != nil {
+		return clusterRole, err
+	}
+	return clusterRole, nil
+}
+
+func GetOrCreateGCSecret(clnt client.Client) (*rbacv1.ClusterRole, error) {
 	gcClusterRoleName := "alameda-gc"
 	if viper.IsSet("gcClusterRole") {
 		gcClusterRoleName = viper.GetString("gcClusterRole")

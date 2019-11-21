@@ -50,6 +50,7 @@ var (
 	_               reconcile.Reconciler = &ReconcileAlamedaService{}
 	log                                  = logf.Log.WithName("controller_alamedaservice")
 	componentConfig *component.ComponentConfig
+	requeueAfter    = 3 * time.Second
 )
 
 // Add creates a new AlamedaService Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -126,41 +127,26 @@ type ReconcileAlamedaService struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling AlamedaService")
-	// Fetch the AlamedaService instance
+
 	instance := &federatoraiv1alpha1.AlamedaService{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		log.V(-1).Info("Get AlamedaService failed, retry reconciling.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
-		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	} else if k8sErrors.IsNotFound(err) {
 		// Request object not found, could have been deleted after reconcile request.
-		// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-		// Return and don't requeue
-		// uninstallResource := alamedaserviceparamter.GetUnInstallResource()
-		// r.UninstallDeployment(instance,uninstallResource)
-		// r.UninstallService(instance,uninstallResource)
-		// r.UninstallConfigMap(instance,uninstallResource)
-		// r.uninstallCustomResourceDefinition(uninstallResource)
 
-		lock, err := r.getAlamedaServiceLock(context.TODO())
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			log.V(-1).Info("Get AlamedaServiceLock failed, retry reconciling.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
-			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
-		} else if k8sErrors.IsNotFound(err) {
-			return reconcile.Result{}, nil
-		} else if isAlamedaServiceLockOwnedByAlamedaService(lock, federatoraiv1alpha1.AlamedaService{ObjectMeta: metav1.ObjectMeta{Namespace: request.Namespace, Name: request.Name}}) {
-			if err := r.deleteAlamedaServiceLock(context.TODO()); err != nil {
-				log.V(-1).Info("Delete AlamedaServiceLock failed, retry reconciling.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
-				return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
-			}
+		log.Info("Handing AlamedaService deletion.", "AlamedaService.Namespace", request.Namespace, "AlamedaService.Name", request.Name)
+		if err := r.handleAlamedaServiceDeletion(request); err != nil {
+			log.V(-1).Info("Handle AlamedaService deletion failed, retry reconciling.", "AlamedaService.Namespace", request.Namespace, "AlamedaService.Name", request.Name, "msg", err.Error())
+			return reconcile.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
 		}
+		log.Info("Handle AlamedaService deletion done.", "AlamedaService.Namespace", request.Namespace, "AlamedaService.Name", request.Name)
 		return reconcile.Result{}, nil
 	}
 
+	log.Info("Reconciling AlamedaService.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
 	r.InitAlamedaService(instance)
-
 	// Check if AlamedaService need to reconcile, currently only reconcile one AlamedaService in one cluster
 	isNeedToBeReconciled, err := r.isNeedToBeReconciled(instance)
 	if err != nil {
@@ -168,21 +154,21 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if !isNeedToBeReconciled {
-		log.Info("AlamedaService doe not need to reconcile", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
+		log.Info("AlamedaService does not need to be reconcile", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
 		err := r.updateAlamedaServiceActivation(instance, false)
 		if err != nil {
-			log.V(-1).Info("reconcile AlamedaService failed", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+			log.V(-1).Info("Update AlamedaService activation failed, retry reconciling", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 		}
 		return reconcile.Result{}, nil
 	} else {
 		if err := r.updateAlamedaServiceActivation(instance, true); err != nil {
-			log.V(-1).Info("reconcile AlamedaService failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+			log.V(-1).Info("Update AlamedaService activation failed, retry reconciling", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 		}
 	}
 
-	clusterRoleGC, err := util.GetGCSecret(r.client)
+	clusterRoleGC, err := util.GetOrCreateGCSecret(r.client)
 	if err != nil {
 		log.V(-1).Info("get clusterRole GC failed, retry reconciling AlamedaService",
 			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name",
@@ -386,8 +372,42 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 
-	log.Info("Reconcile done.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
+	log.Info("Reconciling done.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileAlamedaService) handleAlamedaServiceDeletion(request reconcile.Request) error {
+
+	var err error
+
+	// Before handling, check if the AlamedaService owns the lock
+	lock, err := r.getAlamedaServiceLock(context.TODO())
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.Wrap(err, "get AlamedaService lock failed")
+	} else if k8sErrors.IsNotFound(err) {
+		return nil
+	} else if !isAlamedaServiceLockOwnedByAlamedaService(lock, federatoraiv1alpha1.AlamedaService{ObjectMeta: metav1.ObjectMeta{Namespace: request.Namespace, Name: request.Name}}) {
+		return nil
+	}
+
+	// Deletion of AlamedaService lock must in the last step
+	defer func() {
+		if err := r.deleteAlamedaServiceLock(context.TODO()); err != nil {
+			err = errors.Wrap(err, "delete AlamedaService lock failed")
+		}
+	}()
+
+	gcSecret, err := util.GetGCSecret(context.TODO(), r.client)
+	if err != nil {
+		err = errors.Wrap(err, "get gc secret failed")
+		return err
+	}
+	if err := r.client.Delete(context.TODO(), &gcSecret); err != nil {
+		err = errors.Wrap(err, "delete gc secret failed")
+		return err
+	}
+
+	return err
 }
 
 func (r *ReconcileAlamedaService) InitAlamedaService(alamedaService *federatoraiv1alpha1.AlamedaService) {
