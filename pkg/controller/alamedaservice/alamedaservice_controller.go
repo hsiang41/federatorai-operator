@@ -133,7 +133,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		log.V(-1).Info("Get AlamedaService failed, retry reconciling.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
-	} else if k8sErrors.IsNotFound(err) {		
+	} else if k8sErrors.IsNotFound(err) {
 		// Request object not found, could have been deleted after reconcile request.
 		log.Info("Handing AlamedaService deletion.", "AlamedaService.Namespace", request.Namespace, "AlamedaService.Name", request.Name)
 		if err := r.handleAlamedaServiceDeletion(request); err != nil {
@@ -458,10 +458,7 @@ func (r *ReconcileAlamedaService) syncCustomResourceDefinition(instance *federat
 	resource *alamedaserviceparamter.Resource) error {
 	for _, fileString := range resource.CustomResourceDefinitionList {
 		crd := componentConfig.RegistryCustomResourceDefinition(fileString)
-		if err := controllerutil.SetControllerReference(gcIns, crd, r.scheme); err != nil {
-			return errors.Errorf("Fail resourceCRB SetControllerReference: %s", err.Error())
-		}
-		_, err := resourceapply.ApplyCustomResourceDefinition(r.apiextclient.ApiextensionsV1beta1(), crd, asp)
+		_, err := resourceapply.ApplyCustomResourceDefinition(r.apiextclient.ApiextensionsV1beta1(), gcIns, r.scheme, crd, asp)
 		if err != nil {
 			return errors.Wrapf(err, "syncCustomResourceDefinition faild: CustomResourceDefinition.Name: %s", crd.Name)
 		}

@@ -11,19 +11,27 @@ import (
 	apiextclientv1beta1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var log = logf.Log.WithName("controller_alamedaservice")
 
-func ApplyCustomResourceDefinition(client apiextclientv1beta1.CustomResourceDefinitionsGetter, required *apiextv1beta1.CustomResourceDefinition, asp *alamedaserviceparamter.AlamedaServiceParamter) (*apiextv1beta1.CustomResourceDefinition, error) {
+func ApplyCustomResourceDefinition(client apiextclientv1beta1.CustomResourceDefinitionsGetter,
+	gcIns *rbacv1.ClusterRole, scheme *runtime.Scheme, required *apiextv1beta1.CustomResourceDefinition,
+	asp *alamedaserviceparamter.AlamedaServiceParamter) (*apiextv1beta1.CustomResourceDefinition, error) {
 
 	waitInterval := 500 * time.Millisecond
 
 	cluster, err := client.CustomResourceDefinitions().Get(required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		log.Info("Not Found CRD And Create", "CustomResourceDefinition.Name", required.Name)
+		if err := controllerutil.SetControllerReference(gcIns, required, scheme); err != nil {
+			return nil, errors.Errorf("Fail resourceCRD SetControllerReference: %s", err.Error())
+		}
 		actual, err := client.CustomResourceDefinitions().Create(required)
 		if err != nil {
 			return nil, errors.Wrapf(err, "apply CustomResourceDefinition %s failed", required.Name)
@@ -41,10 +49,13 @@ func ApplyCustomResourceDefinition(client apiextclientv1beta1.CustomResourceDefi
 			return nil, errors.Wrapf(err, "apply CustomResourceDefinition %s failed: waiting CustomResourceDefinition timeout", required.Name)
 		}
 		return actual, err
-	} else {
+	} else if err == nil {
 		log.Info("Found CRD", "CustomResourceDefinition.Name", required.Name)
 		if asp.CheckCurrentCRDIsChangeVersion() && cluster.Name == util.AlamedaScalerName { //if user change scaler CRD version (component version change)
 			cluster.Spec = required.Spec //replace crd spec
+			if err := controllerutil.SetControllerReference(gcIns, cluster, scheme); err != nil {
+				return nil, errors.Errorf("Fail resourceCRD SetControllerReference: %s", err.Error())
+			}
 			actual, err := client.CustomResourceDefinitions().Update(cluster)
 			if err != nil {
 				return nil, errors.Wrapf(err, "update CustomResourceDefinition %s failed", required.Name)
@@ -52,6 +63,14 @@ func ApplyCustomResourceDefinition(client apiextclientv1beta1.CustomResourceDefi
 			asp.SetCurrentCRDChangeVersionToFalse()
 			log.Info("change CRD Version", "CustomResourceDefinition.Name", required.Name)
 			return actual, err
+		} else {
+			if err := controllerutil.SetControllerReference(gcIns, cluster, scheme); err != nil {
+				return nil, errors.Errorf("Fail resourceCRD SetControllerReference: %s", err.Error())
+			}
+			_, err := client.CustomResourceDefinitions().Update(cluster)
+			if err != nil {
+				return nil, errors.Wrapf(err, "update CustomResourceDefinition %s failed", required.Name)
+			}
 		}
 	}
 	if err != nil {
