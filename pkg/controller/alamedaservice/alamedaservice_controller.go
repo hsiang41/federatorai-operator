@@ -133,9 +133,8 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		log.V(-1).Info("Get AlamedaService failed, retry reconciling.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
-	} else if k8sErrors.IsNotFound(err) {
+	} else if k8sErrors.IsNotFound(err) {		
 		// Request object not found, could have been deleted after reconcile request.
-
 		log.Info("Handing AlamedaService deletion.", "AlamedaService.Namespace", request.Namespace, "AlamedaService.Name", request.Name)
 		if err := r.handleAlamedaServiceDeletion(request); err != nil {
 			log.V(-1).Info("Handle AlamedaService deletion failed, retry reconciling.", "AlamedaService.Namespace", request.Namespace, "AlamedaService.Name", request.Name, "msg", err.Error())
@@ -147,8 +146,16 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 
 	log.Info("Reconciling AlamedaService.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
 	r.InitAlamedaService(instance)
+
+	clusterRoleGC, err := util.GetOrCreateGCCluster(r.client)
+	if err != nil {
+		log.V(-1).Info("get clusterRole GC failed, retry reconciling AlamedaService",
+			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name",
+			instance.Name, "msg", err.Error())
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+	}
 	// Check if AlamedaService need to reconcile, currently only reconcile one AlamedaService in one cluster
-	isNeedToBeReconciled, err := r.isNeedToBeReconciled(instance)
+	isNeedToBeReconciled, err := r.isNeedToBeReconciled(instance, clusterRoleGC)
 	if err != nil {
 		log.V(-1).Info("check if AlamedaService needs to reconcile failed, retry reconciling", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
@@ -168,13 +175,6 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		}
 	}
 
-	clusterRoleGC, err := util.GetOrCreateGCSecret(r.client)
-	if err != nil {
-		log.V(-1).Info("get clusterRole GC failed, retry reconciling AlamedaService",
-			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name",
-			instance.Name, "msg", err.Error())
-		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
-	}
 	hasGCOwner := false
 	for _, or := range instance.GetOwnerReferences() {
 		if strings.ToLower(or.Kind) == strings.ToLower("ClusterRole") {
@@ -1445,15 +1445,17 @@ func (r *ReconcileAlamedaService) uninstallResource(resource alamedaserviceparam
 	return nil
 }
 
-func (r *ReconcileAlamedaService) isNeedToBeReconciled(alamedaService *federatoraiv1alpha1.AlamedaService) (bool, error) {
-	lock, err := r.getOrCreateAlamedaServiceLock(context.TODO(), *alamedaService)
+func (r *ReconcileAlamedaService) isNeedToBeReconciled(alamedaService *federatoraiv1alpha1.AlamedaService,
+	gcIns *rbacv1.ClusterRole) (bool, error) {
+	lock, err := r.getOrCreateAlamedaServiceLock(context.TODO(), *alamedaService, gcIns)
 	if err != nil {
 		return false, errors.Wrap(err, "get or create AlamedaService lock failed")
 	}
 	return isAlamedaServiceLockOwnedByAlamedaService(lock, *alamedaService), nil
 }
 
-func (r *ReconcileAlamedaService) getOrCreateAlamedaServiceLock(ctx context.Context, alamedaService federatoraiv1alpha1.AlamedaService) (rbacv1.ClusterRole, error) {
+func (r *ReconcileAlamedaService) getOrCreateAlamedaServiceLock(ctx context.Context,
+	alamedaService federatoraiv1alpha1.AlamedaService, gcIns *rbacv1.ClusterRole) (rbacv1.ClusterRole, error) {
 	lock, err := r.getAlamedaServiceLock(ctx)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return lock, errors.Wrap(err, "get ClusterRole failed")
@@ -1465,6 +1467,9 @@ func (r *ReconcileAlamedaService) getOrCreateAlamedaServiceLock(ctx context.Cont
 					alamedaServiceLockAnnotationKey: fmt.Sprintf("%s/%s", alamedaService.Namespace, alamedaService.Name),
 				},
 			},
+		}
+		if err := controllerutil.SetControllerReference(gcIns, &lock, r.scheme); err != nil {
+			return lock, errors.Errorf("Fail alamedaservice lock SetControllerReference: %s", err.Error())
 		}
 		if err := r.client.Create(ctx, &lock); err != nil {
 			return lock, errors.Wrap(err, "create ClusterRole failed")

@@ -23,7 +23,7 @@ func GetGCSecret(ctx context.Context, clnt client.Client) (rbacv1.ClusterRole, e
 	return clusterRole, nil
 }
 
-func GetOrCreateGCSecret(clnt client.Client) (*rbacv1.ClusterRole, error) {
+func GetOrCreateGCCluster(clnt client.Client) (*rbacv1.ClusterRole, error) {
 	gcClusterRoleName := "alameda-gc"
 	if viper.IsSet("gcClusterRole") {
 		gcClusterRoleName = viper.GetString("gcClusterRole")
