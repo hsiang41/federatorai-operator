@@ -147,7 +147,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	log.Info("Reconciling AlamedaService.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
 	r.InitAlamedaService(instance)
 
-	clusterRoleGC, err := util.GetOrCreateGCCluster(r.client)
+	clusterRoleGC, err := util.GetOrCreateGCClusterRole(r.client)
 	if err != nil {
 		log.V(-1).Info("get clusterRole GC failed, retry reconciling AlamedaService",
 			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name",
@@ -215,7 +215,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 
 	componentConfig = r.newComponentConfig(ns, *instance)
 	installResource := asp.GetInstallResource()
-	if err = r.syncCustomResourceDefinition(instance, asp, installResource); err != nil {
+	if err = r.syncCustomResourceDefinition(instance, clusterRoleGC, asp, installResource); err != nil {
 		log.Error(err, "create crd failed")
 	}
 	if err := r.syncPodSecurityPolicy(instance, clusterRoleGC, asp, installResource); err != nil {
@@ -397,7 +397,7 @@ func (r *ReconcileAlamedaService) handleAlamedaServiceDeletion(request reconcile
 		}
 	}()
 
-	gcSecret, err := util.GetGCSecret(context.TODO(), r.client)
+	gcSecret, err := util.GetGCClusterRole(context.TODO(), r.client)
 	if err != nil {
 		err = errors.Wrap(err, "get gc secret failed")
 		return err
@@ -453,12 +453,14 @@ func (r *ReconcileAlamedaService) createScalerforAlameda(instance *federatoraiv1
 	return nil
 }
 
-func (r *ReconcileAlamedaService) syncCustomResourceDefinition(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
+func (r *ReconcileAlamedaService) syncCustomResourceDefinition(instance *federatoraiv1alpha1.AlamedaService,
+	gcIns *rbacv1.ClusterRole, asp *alamedaserviceparamter.AlamedaServiceParamter,
+	resource *alamedaserviceparamter.Resource) error {
 	for _, fileString := range resource.CustomResourceDefinitionList {
 		crd := componentConfig.RegistryCustomResourceDefinition(fileString)
-		/*if err := controllerutil.SetControllerReference(instance, crd, r.scheme); err != nil {
+		if err := controllerutil.SetControllerReference(gcIns, crd, r.scheme); err != nil {
 			return errors.Errorf("Fail resourceCRB SetControllerReference: %s", err.Error())
-		}*/
+		}
 		_, err := resourceapply.ApplyCustomResourceDefinition(r.apiextclient.ApiextensionsV1beta1(), crd, asp)
 		if err != nil {
 			return errors.Wrapf(err, "syncCustomResourceDefinition faild: CustomResourceDefinition.Name: %s", crd.Name)

@@ -25,6 +25,10 @@ spec:
           type: object
   version: v1alpha1
   additionalPrinterColumns:
+  - description: The enable of execution
+    JSONPath: .spec.enableExecution
+    name: Execution
+    type: boolean
   - description: The type of alameda service
     JSONPath: .spec.version
     name: Version
