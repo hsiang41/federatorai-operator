@@ -12,6 +12,7 @@ import (
 	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/pkg/apis/autoscaling/v1alpha1"
 	federatoraiv1alpha1 "github.com/containers-ai/federatorai-operator/pkg/apis/federatorai/v1alpha1"
 	"github.com/containers-ai/federatorai-operator/pkg/component"
+	federatoraioperatorcontrollerutil "github.com/containers-ai/federatorai-operator/pkg/controller/util"
 	"github.com/containers-ai/federatorai-operator/pkg/lib/resourceapply"
 	"github.com/containers-ai/federatorai-operator/pkg/processcrdspec"
 	"github.com/containers-ai/federatorai-operator/pkg/processcrdspec/alamedaserviceparamter"
@@ -43,11 +44,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-)
-
-const (
-	alamedaServiceLockName          = "alamedaservice-lock"
-	alamedaServiceLockAnnotationKey = "alamedaservices.federatorai.containers.ai/name"
 )
 
 var (
@@ -400,12 +396,12 @@ func (r *ReconcileAlamedaService) handleAlamedaServiceDeletion(request reconcile
 	var err error
 
 	// Before handling, check if the AlamedaService owns the lock
-	lock, err := r.getAlamedaServiceLock(context.TODO())
+	lock, err := federatoraioperatorcontrollerutil.GetAlamedaServiceLock(context.TODO(), r.client)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.Wrap(err, "get AlamedaService lock failed")
 	} else if k8sErrors.IsNotFound(err) {
 		return nil
-	} else if !isAlamedaServiceLockOwnedByAlamedaService(lock, federatoraiv1alpha1.AlamedaService{ObjectMeta: metav1.ObjectMeta{Namespace: request.Namespace, Name: request.Name}}) {
+	} else if !federatoraioperatorcontrollerutil.IsAlamedaServiceLockOwnedByAlamedaService(lock, federatoraiv1alpha1.AlamedaService{ObjectMeta: metav1.ObjectMeta{Namespace: request.Namespace, Name: request.Name}}) {
 		return nil
 	}
 
@@ -1481,20 +1477,20 @@ func (r *ReconcileAlamedaService) isNeedToBeReconciled(alamedaService *federator
 	if err != nil {
 		return false, errors.Wrap(err, "get or create AlamedaService lock failed")
 	}
-	return isAlamedaServiceLockOwnedByAlamedaService(lock, *alamedaService), nil
+	return federatoraioperatorcontrollerutil.IsAlamedaServiceLockOwnedByAlamedaService(lock, *alamedaService), nil
 }
 
 func (r *ReconcileAlamedaService) getOrCreateAlamedaServiceLock(ctx context.Context,
 	alamedaService federatoraiv1alpha1.AlamedaService, gcIns *rbacv1.ClusterRole) (rbacv1.ClusterRole, error) {
-	lock, err := r.getAlamedaServiceLock(ctx)
+	lock, err := federatoraioperatorcontrollerutil.GetAlamedaServiceLock(ctx, r.client)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return lock, errors.Wrap(err, "get ClusterRole failed")
 	} else if k8sErrors.IsNotFound(err) {
 		lock = rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: alamedaServiceLockName,
+				Name: federatoraioperatorcontrollerutil.GetAlamedaServiceLockName(),
 				Annotations: map[string]string{
-					alamedaServiceLockAnnotationKey: fmt.Sprintf("%s/%s", alamedaService.Namespace, alamedaService.Name),
+					federatoraioperatorcontrollerutil.GetAlamedaServiceLockAnnotationKey(): fmt.Sprintf("%s/%s", alamedaService.Namespace, alamedaService.Name),
 				},
 			},
 		}
@@ -1508,37 +1504,12 @@ func (r *ReconcileAlamedaService) getOrCreateAlamedaServiceLock(ctx context.Cont
 	return lock, nil
 }
 
-func (r *ReconcileAlamedaService) getAlamedaServiceLock(ctx context.Context) (rbacv1.ClusterRole, error) {
-	lock := rbacv1.ClusterRole{}
-	if err := r.client.Get(ctx, types.NamespacedName{Name: alamedaServiceLockName}, &lock); err != nil {
-		return lock, err
-	}
-	return lock, nil
-}
-
 func (r *ReconcileAlamedaService) deleteAlamedaServiceLock(ctx context.Context) error {
-	lock := rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: alamedaServiceLockName}}
+	lock := rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: federatoraioperatorcontrollerutil.GetAlamedaServiceLockName()}}
 	if err := r.client.Delete(ctx, &lock); err != nil {
 		return errors.Wrap(err, "delete ClusterRole failed")
 	}
 	return nil
-}
-
-func isAlamedaServiceLockOwnedByAlamedaService(lock rbacv1.ClusterRole, alamedaService federatoraiv1alpha1.AlamedaService) bool {
-
-	// For backward compatibility, keep previous logic that descides wheather lock is owned by AlamedaSerivce
-	old := false
-	for _, ownerReference := range lock.OwnerReferences {
-		if ownerReference.UID == alamedaService.UID {
-			old = true
-			break
-		}
-	}
-
-	new := lock.ObjectMeta.Annotations != nil &&
-		lock.ObjectMeta.Annotations[alamedaServiceLockAnnotationKey] == fmt.Sprintf("%s/%s", alamedaService.Namespace, alamedaService.Name)
-
-	return old || new
 }
 
 func (r *ReconcileAlamedaService) updateAlamedaServiceActivation(alamedaService *federatoraiv1alpha1.AlamedaService, active bool) error {

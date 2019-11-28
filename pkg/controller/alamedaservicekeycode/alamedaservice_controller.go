@@ -12,6 +12,7 @@ import (
 	federatoraiv1alpha1 "github.com/containers-ai/federatorai-operator/pkg/apis/federatorai/v1alpha1"
 	client_datahub "github.com/containers-ai/federatorai-operator/pkg/client/datahub"
 	"github.com/containers-ai/federatorai-operator/pkg/component"
+	controlleruitl "github.com/containers-ai/federatorai-operator/pkg/controller/util"
 	"github.com/containers-ai/federatorai-operator/pkg/processcrdspec/alamedaserviceparamter"
 	repository_keycode "github.com/containers-ai/federatorai-operator/pkg/repository/keycode"
 	repository_keycode_datahub "github.com/containers-ai/federatorai-operator/pkg/repository/keycode/datahub"
@@ -138,10 +139,15 @@ func (r *ReconcileAlamedaServiceKeycode) Reconcile(request reconcile.Request) (r
 
 	var reconcileResult = reconcile.Result{}
 	alamedaService := &federatoraiv1alpha1.AlamedaService{}
-	defer r.setLastReconcileTask(request.Namespace, alamedaService)
-	defer r.flushEvents(request.Namespace, alamedaService)
-	defer r.handleFirstRetryTime(&reconcileResult, request.NamespacedName)
-	defer func() {
+	isAlamedaServiceOwningLock := false
+	defer r.setLastReconcileTask(&isAlamedaServiceOwningLock, request.Namespace, alamedaService)
+	defer r.flushEvents(&isAlamedaServiceOwningLock, request.Namespace, alamedaService)
+	defer r.handleFirstRetryTime(&isAlamedaServiceOwningLock, &reconcileResult, request.NamespacedName)
+	defer func(isAlamedaServiceOwningLock *bool) {
+
+		if isAlamedaServiceOwningLock == nil || !(*isAlamedaServiceOwningLock) {
+			return
+		}
 
 		instance := &federatoraiv1alpha1.AlamedaService{}
 		err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: request.Namespace, Name: request.Name}, instance)
@@ -181,7 +187,7 @@ func (r *ReconcileAlamedaServiceKeycode) Reconcile(request reconcile.Request) (r
 			log.V(-1).Info("Update AlamedaService status failed", "AlamedaService.Namespace", request.Namespace, "AlamedaService.Name", request.Name, "error", err.Error())
 			reconcileResult = reconcile.Result{Requeue: true, RequeueAfter: requeueDuration}
 		}
-	}()
+	}(&isAlamedaServiceOwningLock)
 
 	// Fetch the AlamedaService instance
 	err := r.client.Get(context.TODO(), request.NamespacedName, alamedaService)
@@ -197,6 +203,20 @@ func (r *ReconcileAlamedaServiceKeycode) Reconcile(request reconcile.Request) (r
 		// Error reading the object - requeue the request.
 		log.V(-1).Info("Get AlamedaService failed, retry reconciling keycode", "AlamedaService.Namespace", alamedaService.Namespace, "AlamedaService.Name", alamedaService.Name, "error", err.Error())
 		reconcileResult = reconcile.Result{Requeue: true, RequeueAfter: requeueDuration}
+		return reconcileResult, nil
+	}
+
+	// Check if AlamedaService own lock
+	ok, err := r.isAlamedaServiceOwnLock(alamedaService)
+	if err != nil {
+		log.V(-1).Info("Check if AlamedaService is owning lock failed, retry reconciling keycode", "AlamedaService.Namespace", alamedaService.Namespace, "AlamedaService.Name", alamedaService.Name, "error", err.Error())
+		reconcileResult = reconcile.Result{Requeue: true, RequeueAfter: requeueDuration}
+		return reconcileResult, nil
+	}
+	isAlamedaServiceOwningLock = ok
+	if !ok {
+		log.Info("AlamedaService is not owning lock, stop reconciling.", "AlamedaService.Namespace", alamedaService.Namespace, "AlamedaService.Name", alamedaService.Name)
+		reconcileResult = reconcile.Result{Requeue: false}
 		return reconcileResult, nil
 	}
 
@@ -328,7 +348,11 @@ func (r *ReconcileAlamedaServiceKeycode) Reconcile(request reconcile.Request) (r
 }
 
 // handleFirstRetryTime set/resets first retry time when requeue is true/false
-func (r *ReconcileAlamedaServiceKeycode) handleFirstRetryTime(reconcileResult *reconcile.Result, namespacedName types.NamespacedName) {
+func (r *ReconcileAlamedaServiceKeycode) handleFirstRetryTime(isAlamedaServiceOwningLock *bool, reconcileResult *reconcile.Result, namespacedName types.NamespacedName) {
+
+	if isAlamedaServiceOwningLock == nil || !(*isAlamedaServiceOwningLock) {
+		return
+	}
 
 	if reconcileResult.Requeue == true {
 		t := time.Now()
@@ -616,7 +640,11 @@ func (r *ReconcileAlamedaServiceKeycode) addEvent(namespace namespace, e datahub
 	eventChan <- e
 }
 
-func (r *ReconcileAlamedaServiceKeycode) flushEvents(namespace namespace, alamedaService *federatoraiv1alpha1.AlamedaService) error {
+func (r *ReconcileAlamedaServiceKeycode) flushEvents(isAlamedaServiceOwningLock *bool, namespace namespace, alamedaService *federatoraiv1alpha1.AlamedaService) error {
+
+	if isAlamedaServiceOwningLock == nil || !(*isAlamedaServiceOwningLock) {
+		return nil
+	}
 
 	log.V(1).Info("Flush events...")
 
@@ -668,7 +696,12 @@ func (r *ReconcileAlamedaServiceKeycode) needToflushEvents(namespace namespace, 
 	return true
 }
 
-func (r *ReconcileAlamedaServiceKeycode) setLastReconcileTask(namespace namespace, alamedaService *federatoraiv1alpha1.AlamedaService) {
+func (r *ReconcileAlamedaServiceKeycode) setLastReconcileTask(isAlamedaServiceOwningLock *bool, namespace namespace, alamedaService *federatoraiv1alpha1.AlamedaService) {
+
+	if isAlamedaServiceOwningLock == nil || !(*isAlamedaServiceOwningLock) {
+		return
+	}
+
 	if alamedaService == nil || alamedaService.DeletionTimestamp != nil {
 		return
 	}
@@ -695,4 +728,12 @@ func (r *ReconcileAlamedaServiceKeycode) deleteLastReconcileTask(namespace names
 	r.lastReconcileTaskMapLock.Lock()
 	defer r.lastReconcileTaskMapLock.Unlock()
 	delete(r.lastReconcileTaskMap, namespace)
+}
+
+func (r *ReconcileAlamedaServiceKeycode) isAlamedaServiceOwnLock(alamedaService *federatoraiv1alpha1.AlamedaService) (bool, error) {
+	lock, err := controlleruitl.GetAlamedaServiceLock(context.TODO(), r.client)
+	if err != nil {
+		return false, errors.Wrap(err, "get or create AlamedaService lock failed")
+	}
+	return controlleruitl.IsAlamedaServiceLockOwnedByAlamedaService(lock, *alamedaService), nil
 }
