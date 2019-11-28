@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/pkg/apis/autoscaling/v1alpha1"
 	federatoraiv1alpha1 "github.com/containers-ai/federatorai-operator/pkg/apis/federatorai/v1alpha1"
 	"github.com/containers-ai/federatorai-operator/pkg/component"
@@ -16,9 +18,11 @@ import (
 	"github.com/containers-ai/federatorai-operator/pkg/updateresource"
 	"github.com/containers-ai/federatorai-operator/pkg/util"
 
+	"github.com/openshift/api/route"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/openshift/api/security"
 	securityv1 "github.com/openshift/api/security/v1"
-	"github.com/pkg/errors"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	ingressv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -62,11 +66,24 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	kubeClient, _ := kubernetes.NewForConfig(mgr.GetConfig())
+
+	hasOpenshiftAPIRoute, err := util.ServerHasAPIGroup(route.GroupName)
+	if err != nil {
+		panic(err)
+	}
+
+	hasOpenshiftAPISecurity, err := util.ServerHasAPIGroup(security.GroupName)
+	if err != nil {
+		panic(err)
+	}
+
 	return &ReconcileAlamedaService{
-		client:       mgr.GetClient(),
-		scheme:       mgr.GetScheme(),
-		apiextclient: apiextension.NewForConfigOrDie(mgr.GetConfig()),
-		kubeClient:   kubeClient,
+		client:                      mgr.GetClient(),
+		scheme:                      mgr.GetScheme(),
+		apiextclient:                apiextension.NewForConfigOrDie(mgr.GetConfig()),
+		kubeClient:                  kubeClient,
+		isOpenshiftAPIRouteExist:    hasOpenshiftAPIRoute,
+		isOpenshiftAPISecurityExist: hasOpenshiftAPISecurity,
 	}
 }
 
@@ -117,6 +134,9 @@ type ReconcileAlamedaService struct {
 	scheme       *runtime.Scheme
 	apiextclient apiextension.Interface
 	kubeClient   *kubernetes.Clientset
+
+	isOpenshiftAPIRouteExist    bool
+	isOpenshiftAPISecurityExist bool
 }
 
 // Reconcile reads that state of the cluster for a AlamedaService object and makes changes based on the state read
@@ -214,7 +234,8 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	componentConfig = r.newComponentConfig(ns, *instance)
-	installResource := asp.GetInstallResource()
+	resource := r.removeUnsupportedResource(*asp.GetInstallResource())
+	installResource := &resource
 	if err = r.syncCustomResourceDefinition(instance, clusterRoleGC, asp, installResource); err != nil {
 		log.Error(err, "create crd failed")
 	}
@@ -223,9 +244,9 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncSecurityContextConstraints(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync securityContextConstraint failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync securityContextConstraint failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		return reconcile.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
 	}
-
 	if err := r.syncClusterRole(instance, clusterRoleGC, asp, installResource); err != nil {
 		log.V(-1).Info("sync clusterRole failed, retry reconciling AlamedaService",
 			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
@@ -289,7 +310,8 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncRoute(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync route failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync route failed, retry reconciling.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		return reconcile.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
 	}
 	if err := r.syncDaemonSet(instance, asp, installResource); err != nil {
 		log.V(-1).Info("sync DaemonSet failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
@@ -303,47 +325,44 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		log.V(-1).Info("create AlamedaNotificationTopic failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
 	}
-	// if EnableExecution Or EnableGUI has been changed to false
+
 	//Uninstall Execution Component
 	if !asp.EnableExecution {
 		log.Info("EnableExecution has been changed to false")
 		excutionResource := alamedaserviceparamter.GetExcutionResource()
 		if err := r.uninstallResource(*excutionResource); err != nil {
-			log.V(-1).Info("retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+			log.V(-1).Info("Uninstall execution resources failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 		}
 	}
 	//Uninstall GUI Component
 	if !asp.EnableGUI {
-		log.Info("EnableGUI has been changed to false")
-		guiResource := alamedaserviceparamter.GetGUIResource()
-		if err := r.uninstallResource(*guiResource); err != nil {
-			log.V(-1).Info("retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		resource := r.removeUnsupportedResource(*alamedaserviceparamter.GetGUIResource())
+		if err := r.uninstallResource(resource); err != nil {
+			log.V(-1).Info("Uninstall gui resources failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 		}
 	}
 	//Uninstall dispatcher Component
 	if !asp.EnableDispatcher {
-		log.Info("EnableDispatcher has been changed to false")
-		dispatcherResource := alamedaserviceparamter.GetDispatcherResource()
-		if err := r.uninstallResource(*dispatcherResource); err != nil {
-			log.V(-1).Info("retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		resource := r.removeUnsupportedResource(*alamedaserviceparamter.GetDispatcherResource())
+		if err := r.uninstallResource(resource); err != nil {
+			log.V(-1).Info("Uninstall dispatcher resources failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 		}
 	}
 	if !asp.EnablePreloader {
-		log.Info("EnablePreloader has been changed to false")
-		resource := alamedaserviceparamter.GetPreloaderResource()
-		if err := r.uninstallResource(*resource); err != nil {
-			log.V(-1).Info("retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		resource := r.removeUnsupportedResource(*alamedaserviceparamter.GetPreloaderResource())
+		if err := r.uninstallResource(resource); err != nil {
+			log.V(-1).Info("Uninstall preloader resources failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 		}
 	}
 	//Uninstall weavescope components
 	if !asp.EnableWeavescope {
-		weavescopeResource := alamedaserviceparamter.GetWeavescopeResource()
-		if err := r.uninstallResource(weavescopeResource); err != nil {
-			log.V(-1).Info("retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		resource := r.removeUnsupportedResource(alamedaserviceparamter.GetWeavescopeResource())
+		if err := r.uninstallResource(resource); err != nil {
+			log.V(-1).Info("Uninstall weavescope resources failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 		}
 	}
@@ -1067,6 +1086,12 @@ func (r *ReconcileAlamedaService) syncRoute(instance *federatoraiv1alpha1.Alamed
 			log.Info("Successfully Creating Resource route", "resourceRT.Name", resourceRT.Name)
 		} else if err != nil {
 			return errors.Errorf("get route %s/%s failed: %s", resourceRT.Namespace, resourceRT.Name, err.Error())
+		} else {
+			foundRT.Spec.TLS = resourceRT.Spec.TLS
+			foundRT.Spec.Port = resourceRT.Spec.Port
+			if err := r.client.Update(context.TODO(), foundRT); err != nil {
+				return errors.Wrapf(err, "update Route(%s/%s) failed", foundRT.Namespace, foundRT.Name)
+			}
 		}
 	}
 	return nil
@@ -1633,4 +1658,17 @@ func (r *ReconcileAlamedaService) patchConfigMapResourceVersionIntoPodTemplateSp
 		}
 	}
 	return nil
+}
+
+func (r *ReconcileAlamedaService) removeUnsupportedResource(resource alamedaserviceparamter.Resource) alamedaserviceparamter.Resource {
+
+	if !r.isOpenshiftAPIRouteExist {
+		resource.RouteList = nil
+	}
+
+	if !r.isOpenshiftAPISecurityExist {
+		resource.SecurityContextConstraintsList = nil
+	}
+
+	return resource
 }

@@ -6,9 +6,12 @@ import (
 
 	"github.com/containers-ai/federatorai-operator/pkg/apis/federatorai/v1alpha1"
 	"github.com/pkg/errors"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -553,4 +556,23 @@ func StringSliceDelete(slice1 []string, slice2 []string) []string {
 	}
 
 	return diff
+}
+
+func ServerHasAPIGroup(apiGroupName string) (bool, error) {
+
+	config, err := config.GetConfig()
+	k8sClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return false, err
+	}
+	apiGroups, err := k8sClient.ServerGroups()
+	if err != nil {
+		return false, err
+	}
+	for _, apiGroup := range apiGroups.Groups {
+		if apiGroup.Name == apiGroupName {
+			return true, nil
+		}
+	}
+	return false, nil
 }
