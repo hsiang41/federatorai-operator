@@ -6,6 +6,8 @@ metadata:
   name: federatorai-rest
   namespace: {{.NameSpace}}
 spec:
+  tls:
+    termination: edge
   to:
     kind: Service
     name: federatorai-rest

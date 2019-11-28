@@ -6,6 +6,8 @@ metadata:
   name: alameda-grafana
   namespace: {{.NameSpace}}
 spec:
+  tls:
+    termination: edge
   to:
     kind: Service
     name: alameda-grafana
