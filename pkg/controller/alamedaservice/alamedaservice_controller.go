@@ -46,6 +46,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+const (
+	serviceExposureAnnotationKey = "servicesxposures.alamedaservices.federatorai.containers.ai"
+)
+
 var (
 	_               reconcile.Reconciler = &ReconcileAlamedaService{}
 	log                                  = logf.Log.WithName("controller_alamedaservice")
@@ -281,6 +285,10 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	}
 	if err := r.syncService(instance, asp, installResource); err != nil {
 		log.V(-1).Info("sync service failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+	}
+	if err := r.syncServiceExposure(instance, asp, installResource); err != nil {
+		log.V(-1).Info("Sync service exposure failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.createMutatingWebhookConfiguration(instance, clusterRoleGC, asp, installResource); err != nil {
@@ -920,9 +928,6 @@ func (r *ReconcileAlamedaService) syncService(instance *federatoraiv1alpha1.Alam
 		if err := controllerutil.SetControllerReference(instance, resourceSV, r.scheme); err != nil {
 			return errors.Errorf("Fail resourceSV SetControllerReference: %s", err.Error())
 		}
-		if err := processcrdspec.ParamterToService(resourceSV, asp); err != nil {
-			return errors.Wrapf(err, "process service (%s/%s) failed", resourceSV.Namespace, resourceSV.Name)
-		}
 		foundSV := &corev1.Service{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: resourceSV.Name, Namespace: resourceSV.Namespace}, foundSV)
 		if err != nil && k8sErrors.IsNotFound(err) {
@@ -950,6 +955,129 @@ func (r *ReconcileAlamedaService) syncService(instance *federatoraiv1alpha1.Alam
 		}
 	}
 	return nil
+}
+
+// syncServiceExposure synchornize AlamedaService.Spec.ServiceExposures with current services in type NodePort.
+func (r *ReconcileAlamedaService) syncServiceExposure(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
+
+	// prepare services need to be created by service exposures
+	serviceExposureMap := make(map[string]federatoraiv1alpha1.ServiceExposureSpec)
+	for _, serviceExposure := range instance.Spec.ServiceExposures {
+		serviceExposureMap[serviceExposure.Name] = serviceExposure
+	}
+	servicesNeedToBeCreatedMap := make(map[string]corev1.Service)
+	for _, fileString := range resource.ServiceList {
+		resource := componentConfig.NewService(fileString)
+		serviceExposure, exist := serviceExposureMap[resource.Name]
+		if !exist {
+			continue
+		}
+		want, err := r.newServiceByServiceExposure(*resource, serviceExposure)
+		if err != nil {
+			return errors.Wrap(err, "apply service exposure to service failed")
+		}
+		servicesNeedToBeCreatedMap[fmt.Sprintf("%s/%s", want.Namespace, want.Name)] = want
+	}
+
+	// create or update services
+	for _, service := range servicesNeedToBeCreatedMap {
+
+		if err := controllerutil.SetControllerReference(instance, &service, r.scheme); err != nil {
+			return errors.Wrapf(err, "set controller reference to Service(%s/%s) failed", service.Namespace, service.Name)
+		}
+
+		found := corev1.Service{}
+		err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: service.Namespace, Name: service.Name}, &found)
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return errors.Wrapf(err, "get Service(%s/%s) failed", service.Namespace, service.Name)
+		} else if k8sErrors.IsNotFound(err) {
+			if err := r.client.Create(context.TODO(), &service); err != nil {
+				return errors.Wrapf(err, "create Service(%s/%s) failed", service.Namespace, service.Name)
+			}
+		} else {
+			// update
+			service.ResourceVersion = found.ResourceVersion
+			service.Spec.ClusterIP = found.Spec.ClusterIP
+			if err := r.client.Update(context.TODO(), &service); err != nil {
+				return errors.Wrapf(err, "update Service(%s/%s) failed", service.Namespace, service.Name)
+			}
+		}
+	}
+
+	// deletes services created by service exposures but not in current exist list
+	serviceList := corev1.ServiceList{}
+	listOpt := client.ListOptions{}
+	client.MatchingLabels{serviceExposureAnnotationKey: ""}.ApplyToList(&listOpt)
+	err := r.client.List(context.TODO(), &serviceList, &listOpt)
+	if err != nil {
+		return errors.Wrap(err, "list service failed")
+	}
+	for _, service := range serviceList.Items {
+		if _, exist := servicesNeedToBeCreatedMap[fmt.Sprintf("%s/%s", service.Namespace, service.Name)]; !exist {
+			if err := r.client.Delete(context.TODO(), &service); err != nil {
+				return errors.Wrapf(err, "delete Service(%s/%s) failed", service.Namespace, service.Name)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *ReconcileAlamedaService) newServiceByServiceExposure(svc corev1.Service, svcExposure federatoraiv1alpha1.ServiceExposureSpec) (corev1.Service, error) {
+
+	if svc.Name != svcExposure.Name {
+		return corev1.Service{}, errors.New("service name must be equal to service exposure name")
+	}
+
+	// add service exposure label to service
+	labels := svc.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[serviceExposureAnnotationKey] = ""
+	svc.SetLabels(labels)
+
+	switch svcExposure.Type {
+	case federatoraiv1alpha1.ServiceExposureTypeNodePort:
+		return r.newNodePortServiceByServiceExposure(svc, svcExposure), nil
+	default:
+		return corev1.Service{}, errors.Errorf(`not supported service exposure type(%s)`, svcExposure.Type)
+	}
+
+}
+
+func (r *ReconcileAlamedaService) newNodePortServiceByServiceExposure(svc corev1.Service, svcExposure federatoraiv1alpha1.ServiceExposureSpec) corev1.Service {
+
+	if svcExposure.NodePort == nil {
+		return svc
+	}
+
+	svc.Name = fmt.Sprintf(`%s-node-port`, svc.Name)
+	svc.Spec.Type = corev1.ServiceTypeNodePort
+
+	portMap := make(map[int32]federatoraiv1alpha1.PortSpec)
+	for _, port := range svcExposure.NodePort.Ports {
+		portMap[port.Port] = port
+	}
+	newPorts := make([]corev1.ServicePort, 0, len(portMap))
+	for _, port := range svc.Spec.Ports {
+		portSpec, exist := portMap[port.Port]
+		if !exist {
+			continue
+		}
+		port.NodePort = portSpec.NodePort
+		newPorts = append(newPorts, port)
+		delete(portMap, port.Port)
+	}
+	for _, portSpec := range portMap {
+		newPorts = append(newPorts, corev1.ServicePort{
+			Port:     portSpec.Port,
+			NodePort: portSpec.NodePort,
+			Name:     fmt.Sprintf("port-%d", portSpec.Port),
+		})
+	}
+	svc.Spec.Ports = newPorts
+	return svc
 }
 
 func (r *ReconcileAlamedaService) getSecret(namespace, name string) (corev1.Secret, error) {
