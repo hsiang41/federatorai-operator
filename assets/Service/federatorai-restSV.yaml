@@ -7,7 +7,11 @@ metadata:
   namespace: {{.NameSpace}}
 spec:
   ports:
-  - name: restapi
+  - name: restapi-http
     port: 5055
+    targetPort: 5055
+  - name: restapi-https
+    port: 5056
+    targetPort: 5056
   selector:
     component: federatorai-rest
