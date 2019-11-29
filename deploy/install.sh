@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 #################################################################################################################
 #
@@ -185,7 +185,7 @@ get_grafana_route()
         link=`oc get route -n $1 2>/dev/null|grep grafana|awk '{print $2}'`
         if [ "$link" != "" ] ; then
         echo -e "\n========================================"
-        echo "You can now access GUI through $(tput setaf 6)http://${link} $(tput sgr 0)"
+        echo "You can now access GUI through $(tput setaf 6)https://${link} $(tput sgr 0)"
         echo "Default login credential is $(tput setaf 6)admin/admin$(tput sgr 0)"
         echo -e "\nAlso, you can start to apply alamedascaler CR for the namespace you would like to monitor."
         echo "$(tput setaf 6)Review administration guide for further details.$(tput sgr 0)"
@@ -202,9 +202,9 @@ get_restapi_route()
         link=`oc get route -n $1 2>/dev/null|grep "federatorai-rest" |awk '{print $2}'`
         if [ "$link" != "" ] ; then
         echo -e "\n========================================"
-        echo "You can now access Federatorai REST API through $(tput setaf 6)http://${link} $(tput sgr 0)"
+        echo "You can now access Federatorai REST API through $(tput setaf 6)https://${link} $(tput sgr 0)"
         echo "Default login credential is $(tput setaf 6)admin/admin$(tput sgr 0)"
-        echo "The REST API online document can be find in $(tput setaf 6)http://${link}/apis/v1/swagger/index.html $(tput sgr 0)"
+        echo "The REST API online document can be find in $(tput setaf 6)https://${link}/apis/v1/swagger/index.html $(tput sgr 0)"
         echo "========================================"
         else
             echo "Warning! Failed to obtain Federatorai REST API route address."

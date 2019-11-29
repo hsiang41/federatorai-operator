@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 remove_containersai_crds()
 {
