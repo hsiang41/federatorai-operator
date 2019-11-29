@@ -6,8 +6,11 @@ metadata:
   name: alameda-grafana
   namespace: {{.NameSpace}}
 spec:
+  port:
+    targetPort: grafana-http
   tls:
     termination: edge
+    insecureEdgeTerminationPolicy: Redirect
   to:
     kind: Service
     name: alameda-grafana

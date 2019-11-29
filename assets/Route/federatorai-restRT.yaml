@@ -6,8 +6,11 @@ metadata:
   name: federatorai-rest
   namespace: {{.NameSpace}}
 spec:
+  port:
+    targetPort: restapi-http
   tls:
     termination: edge
+    insecureEdgeTerminationPolicy: Redirect
   to:
     kind: Service
     name: federatorai-rest
