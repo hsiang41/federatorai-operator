@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 default_alamedanotificationchannels="default"
 default_alamedanotificationtopics="default"

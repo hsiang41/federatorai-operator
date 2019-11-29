@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 which curl > /dev/null 2>&1
 if [ "$?" != "0" ];then
