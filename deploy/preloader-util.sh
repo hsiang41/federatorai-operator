@@ -174,6 +174,7 @@ get_current_preloader_name()
 
 delete_all_alamedascaler()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Deleting old alamedascaler if necessary...$(tput sgr 0)"
     while read alamedascaler_name alamedascaler_ns
     do
@@ -188,10 +189,14 @@ delete_all_alamedascaler()
         fi
     done <<< "$(kubectl get alamedascaler --all-namespaces --output jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.metadata.namespace}' 2>/dev/null)"
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration delete_all_alamedascaler = $duration" >> $debug_log
 }
 
 run_preloader_command()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Run preloader...$(tput sgr 0)"
     get_current_preloader_name
     if [ "$current_preloader_pod_name" = "" ]; then
@@ -215,10 +220,14 @@ run_preloader_command()
 
     wait_until_data_pump_finish 1200 60 "historical"
     echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration run_preloader_command = $duration" >> $debug_log
 }
 
 run_futuremode_preloader()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Run future mode preloader...$(tput sgr 0)"
     get_current_preloader_name
     if [ "$current_preloader_pod_name" = "" ]; then
@@ -237,10 +246,14 @@ run_futuremode_preloader()
     sleep 10
     wait_until_data_pump_finish 1200 60 "future"
     echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration run_futuremode_preloader = $duration" >> $debug_log
 }
 
 reschedule_dispatcher()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Reschedule alameda-ai dispatcher...$(tput sgr 0)"
     current_dispatcher_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-ai-dispatcher-"|awk '{print $1}'|head -1`"
     if [ "$current_dispatcher_pod_name" = "" ]; then
@@ -258,6 +271,9 @@ reschedule_dispatcher()
     echo ""
     wait_until_pods_ready 600 30 $install_namespace 5
     echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration reschedule_dispatcher = $duration" >> $debug_log
 
 }
 
@@ -279,6 +295,7 @@ get_grafana_route()
 
 patch_datahub_for_preloader()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Starting patch datahub for preloader...$(tput sgr 0)"
     kubectl get deployment/alameda-datahub -n $install_namespace -o yaml|grep ALAMEDA_DATAHUB_APIS_METRICS_SOURCE -A1|grep -q influxdb
     if [ "$?" != "0" ]; then
@@ -292,10 +309,14 @@ patch_datahub_for_preloader()
         wait_until_pods_ready 600 30 $install_namespace 5
     fi
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration patch_datahub_for_preloader = $duration" >> $debug_log
 }
 
 patch_datahub_back_to_normal()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Starting roll back datahub...$(tput sgr 0)"
     kubectl get deployment/alameda-datahub -n $install_namespace -o yaml|grep ALAMEDA_DATAHUB_APIS_METRICS_SOURCE -A1|grep -q prometheus
     if [ "$?" != "0" ]; then
@@ -309,10 +330,14 @@ patch_datahub_back_to_normal()
         wait_until_pods_ready 600 30 $install_namespace 5
     fi
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration patch_datahub_back_to_normal = $duration" >> $debug_log
 }
 
 check_influxdb_retention()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Starting check retention policy...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     kubectl exec $influxdb_pod_name -n $install_namespace -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_metric -execute "show retention policies"|grep "autogen"|grep -q "3600h"
@@ -322,9 +347,14 @@ check_influxdb_retention()
         exit 8
     fi
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration check_influxdb_retention = $duration" >> $debug_log
 }
 
-patch_grafana_for_preloader(){
+patch_grafana_for_preloader()
+{
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Starting add flag for grafana ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     kubectl exec $influxdb_pod_name -n $install_namespace -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_metric -execute "select * from grafana_config order by time desc limit 1" 2>/dev/null|grep -q true
@@ -343,9 +373,14 @@ patch_grafana_for_preloader(){
         fi
     fi
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration patch_grafana_for_preloader = $duration" >> $debug_log
 }
 
-patch_grafana_back_to_normal(){
+patch_grafana_back_to_normal()
+{
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Starting add flag to roll back grafana ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     kubectl exec $influxdb_pod_name -n $install_namespace -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_metric -execute "select * from grafana_config order by time desc limit 1" 2>/dev/null|grep -q false
@@ -364,25 +399,34 @@ patch_grafana_back_to_normal(){
         fi
     fi
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration patch_grafana_back_to_normal = $duration" >> $debug_log
 }
 
 verify_metrics_exist()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Starting verify metrics in influxdb ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     metrics_list=$(kubectl exec $influxdb_pod_name -n $install_namespace -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_metric -execute "show measurements")
-    metrics_num=$(echo "$metrics_list"| egrep "container_cpu|container_memory|node_cpu|node_memory" |wc -l)
+    metrics_num=$(echo "$metrics_list"| egrep "application_cpu|application_memory|cluster_cpu|cluster_memory|contaBiner_cpu|container_memory|controller_cpu|controller_memory|namespace_cpu|namespace_memory|node_cpu|node_memory" |wc -l)
+
     echo "metrics_num = $metrics_num"
-    if [ "$metrics_num" -lt "4" ]; then
+    if [ "$metrics_num" -lt "12" ]; then
         echo -e "\n$(tput setaf 1)Error! metrics in alameda_metric is not complete.$(tput sgr 0)"
         echo "$metrics_list"
         exit 8
     fi
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration verify_metrics_exist = $duration" >> $debug_log
 }
 
 delete_nginx_example()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Deleting nginx sample ...$(tput sgr 0)"
     dc_name="`kubectl get dc -n $nginx_ns 2>/dev/null|grep -v "NAME"|awk '{print $1}'`"
     if [ "$dc_name" != "" ]; then
@@ -397,10 +441,14 @@ delete_nginx_example()
         kubectl delete ns $nginx_ns
     fi
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration delete_nginx_example = $duration" >> $debug_log
 }
 
 new_nginx_example()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Creating new nginx sample pod ...$(tput sgr 0)"
 
     if [[ "`kubectl get po -n $nginx_ns 2>/dev/null|grep -v "NAME"|grep "Running"|wc -l`" -gt "0" ]]; then
@@ -457,10 +505,14 @@ __EOF__
         fi
     fi
     echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration new_nginx_example = $duration" >> $debug_log
 }
 
 add_alamedascaler_for_nginx()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Adding nginx alamedascaler ...$(tput sgr 0)"
     nginx_alamedascaler_file="nginx_alamedascaler_file"
     kubectl get alamedascaler -n ${nginx_ns} 2>/dev/null|grep -q "nginx-alamedascaler"
@@ -489,10 +541,14 @@ __EOF__
         sleep 10
     fi
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration add_alamedascaler_for_nginx = $duration" >> $debug_log
 }
 
 cleanup_influxdb_prediction_related_contents()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Cleaning old influxdb prediction/recommendation/planning records ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     for database in `echo "alameda_prediction alameda_recommendation alameda_planning"`
@@ -506,10 +562,14 @@ cleanup_influxdb_prediction_related_contents()
         done
     done
     echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration cleanup_influxdb_prediction_related_contents = $duration" >> $debug_log
 }
 
 cleanup_alamedaai_models()
 {
+    start=`date +%s`
     #/var/lib/alameda/alameda-ai/models/online/workload_prediction
     echo -e "\n$(tput setaf 6)Cleaning old alameda ai model ...$(tput sgr 0)"
     for ai_pod_name in `kubectl get pods -n $install_namespace -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}'|grep alameda-ai-|grep -v dispatcher`
@@ -517,10 +577,14 @@ cleanup_alamedaai_models()
         kubectl exec $ai_pod_name -n $install_namespace -- rm -rf /var/lib/alameda/alameda-ai/models/online/workload_prediction
     done
     echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration cleanup_alamedaai_models = $duration" >> $debug_log
 }
 
 cleanup_influxdb_preloader_related_contents()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Cleaning old influxdb preloader metrics records ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     
@@ -536,10 +600,14 @@ cleanup_influxdb_preloader_related_contents()
     done
     
     echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration cleanup_influxdb_preloader_related_contents = $duration" >> $debug_log
 }
 
 check_prediction_status()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Checking prediction status of monitored objects ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     measurements_list="`oc exec alameda-influxdb-54949c7c-jp4lk -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_cluster_status -execute "show measurements"|tail -n+4`"
@@ -559,10 +627,14 @@ check_prediction_status()
             yy=$(($yy + $xx))
         fi
     done
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration check_prediction_status() = $duration" >> $debug_log
 }
 
 enable_preloader_in_alamedaservice()
 {
+    start=`date +%s`
     get_current_preloader_name
     if [ "$current_preloader_pod_name" != "" ]; then
         echo -e "\n$(tput setaf 6)Skip preloader installation due to preloader pod exist.$(tput sgr 0)"
@@ -597,10 +669,14 @@ enable_preloader_in_alamedaservice()
         leave_prog
         exit 8
     fi
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration enable_preloader_in_alamedaservice = $duration" >> $debug_log
 }
 
 disable_preloader_in_alamedaservice()
 {
+    start=`date +%s`
     echo -e "\n$(tput setaf 6)Disable preloader in alamedaservice...$(tput sgr 0)"
     get_current_preloader_name
     if [ "$current_preloader_pod_name" != "" ]; then
@@ -628,6 +704,9 @@ disable_preloader_in_alamedaservice()
         fi
     fi
     echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration disable_preloader_in_alamedaservice = $duration" >> $debug_log
 }
 
 clean_environment_operations()
@@ -703,11 +782,13 @@ fi
 
 file_folder="/tmp/preloader"
 nginx_ns="nginx-preloader-sample"
+debug_log="debug.log"
 
 rm -rf $file_folder
 mkdir -p $file_folder
 current_location=`pwd`
 cd $file_folder
+echo "Receiving command '$0 $@'" >> $debug_log
 
 if [ "$prepare_environment" = "y" ]; then
     delete_all_alamedascaler
