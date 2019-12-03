@@ -52,7 +52,10 @@ assign_label_to_each_nodes()
         fi
 
         if [[ $node_role == *"master"* ]]; then
-            kubectl label --overwrite node $node_name node-role.kubernetes.io/master=""
+            kubectl get nodes $node_name --show-labels | grep -q "node-role.kubernetes.io/master"
+            if [ "$?" != "0" ]; then
+                kubectl label --overwrite node $node_name node-role.kubernetes.io/master=""
+            fi
         fi
 
         kubectl label node $node_name beta.kubernetes.io/instance-type=c5.xlarge
