@@ -150,8 +150,7 @@ wait_until_data_pump_finish()
         fi
     else #historical mode
         echo "Waiting for data pump to finish ..."
-        kubectl logs -n $install_namespace $current_preloader_pod_name | grep -q "Succeed to generate pods historical metrics"
-        if [ "$?" = "0" ]; then
+        if [[ "`kubectl logs -n $install_namespace $current_preloader_pod_name | egrep "Succeed to generate pods historical metrics|Succeed to generate nodes historical metrics" | wc -l`" -gt "1" ]]; then
             echo -e "\n$(tput setaf 6)Data pump is finish.$(tput sgr 0)"
             return 0
         fi
@@ -218,7 +217,7 @@ run_preloader_command()
         exit 5
     fi
 
-    wait_until_data_pump_finish 1200 60 "historical"
+    wait_until_data_pump_finish 3600 60 "historical"
     echo "Done."
     end=`date +%s`
     duration=$((end-start))
@@ -244,7 +243,7 @@ run_futuremode_preloader()
 
     echo "Checking..."
     sleep 10
-    wait_until_data_pump_finish 1200 60 "future"
+    wait_until_data_pump_finish 3600 60 "future"
     echo "Done."
     end=`date +%s`
     duration=$((end-start))
@@ -410,7 +409,7 @@ verify_metrics_exist()
     echo -e "\n$(tput setaf 6)Starting verify metrics in influxdb ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     metrics_list=$(kubectl exec $influxdb_pod_name -n $install_namespace -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_metric -execute "show measurements")
-    metrics_num=$(echo "$metrics_list"| egrep "application_cpu|application_memory|cluster_cpu|cluster_memory|contaBiner_cpu|container_memory|controller_cpu|controller_memory|namespace_cpu|namespace_memory|node_cpu|node_memory" |wc -l)
+    metrics_num=$(echo "$metrics_list"| egrep "application_cpu|application_memory|cluster_cpu|cluster_memory|container_cpu|container_memory|controller_cpu|controller_memory|namespace_cpu|namespace_memory|node_cpu|node_memory" |wc -l)
 
     echo "metrics_num = $metrics_num"
     if [ "$metrics_num" -lt "12" ]; then
