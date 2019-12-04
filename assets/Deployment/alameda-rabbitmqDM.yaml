@@ -28,6 +28,9 @@ spec:
           - name: amqp
             protocol: TCP
             containerPort: 5672
+        env:
+        - name: TRACE_ENABLED
+          value: "false"
         livenessProbe:
           exec:
             command: ["rabbitmqctl", "status"]
