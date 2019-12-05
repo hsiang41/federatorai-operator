@@ -375,23 +375,41 @@ kubectl get nodes | grep `hostname` > /dev/null && (
 
 # federatorai-operator
 (
-    #     
-    s="`kubectl get pods --all-namespaces | grep federatorai-operator | grep Running`"
-    ns="`echo ${s} | awk '{print $1}'`"
-    pod="`echo ${s} | awk '{print $2}'`"
-    dest_dir=${workdir}/${ns}.${pod}
-    mkdir -pv ${dest_dir}
-    
-    # logs
-    kubectl -n ${ns} exec ${pod} -- find /var/log/alameda -type f \
-      | while read fn; do
-          kubectl -n ${ns} cp ${pod}:${fn} ${dest_dir}
-        done
+    #
+    AIHOME="/opt/alameda/federatorai-operator"
+    ns="`kubectl get pods --all-namespaces -l 'name=federatorai-operator' --output=jsonpath={.items..metadata.namespace} | head -1`"
+    pods="`kubectl get pods -n ${ns} -l 'name=federatorai-operator' --output=jsonpath={.items..metadata.name}`"
+    if [ "${pods}" = "" ]; then
+        echo "Found no federatorai-operator pods in namespace '${ns}'."
+    else
+        for pod in ${pods}; do
+            dest_dir=${workdir}/${ns}.${pod}
+            mkdir -pv ${dest_dir}
 
+            # copy xray.sh from containter and execute it
+            get_command 180 ${dest_dir}/log "kubectl -n ${ns} cp ${pod}:/xray.sh ${dest_dir}/xray.sh"
+
+            # version.txt
+            get_command 180 ${dest_dir}/log "kubectl -n ${ns} cp ${pod}:${AIHOME}/etc/version.txt ${dest_dir}/version.txt"
+
+            # logs
+            fn_list="`kubectl -n ${ns} exec ${pod} -- find /var/log/alameda -type f`"
+            echo ${fn_list} \
+                | while read fn junk; do \
+                    kubectl -n ${ns} cp ${pod}:${fn} ${dest_dir}; \
+                done
+        done
+    fi
 ) | tee -a ${workdir}/xray.log
 
 # alameda
 (
+    mkdir -pv ${workdir}/api-resources
+    ns="`kubectl get pods --all-namespaces -l 'name=federatorai-operator' --output=jsonpath={.items..metadata.namespace} | head -1`"
+    kubectl api-resources --verbs=list --namespaced -o name \
+      | while read rs _junk; do
+          get_command 180 api-resources/log "kubectl get -n ${ns} ${rs} -o yaml > ${workdir}/api-resources/${ns}-${rs}"
+        done
     egrep_all_related_pods=' admission-controller-| alameda-| federatorai-| fedemeter-|prometheus'
     get_command 180 alameda/list "kubectl get pods --all-namespaces"
     get_command 180 alameda/log "kubectl get deployments --all-namespaces | egrep \"${egrep_all_related_pods}\" \
@@ -408,10 +426,10 @@ kubectl get nodes | grep `hostname` > /dev/null && (
                                  | while read ns pod junk; do \
                                      echo \"kubectl -n \${ns} get svc \${pod} -o yaml > ${workdir}/alameda/svc.\${ns}.\${pod}.yaml\";\
                                    done | sh -x"
-     get_command 180 alameda/log "kubectl get configmaps --all-namespaces | egrep \"${egrep_all_related_pods}\" \
-                                  | while read ns cm junk; do \
-                                      echo \"kubectl -n \${ns} get configmap \${cm} -o yaml > ${workdir}/alameda/configmap.\${ns}.\${cm}.yaml\"; \
-                                    done | sh -x"
+    get_command 180 alameda/log "kubectl get configmaps --all-namespaces | egrep \"${egrep_all_related_pods}\" \
+                                 | while read ns cm junk; do \
+                                     echo \"kubectl -n \${ns} get configmap \${cm} -o yaml > ${workdir}/alameda/configmap.\${ns}.\${cm}.yaml\"; \
+                                   done | sh -x"
     ## crd
     mkdir -p ${workdir}/alameda/crd/
     get_command 180 alameda/log "kubectl get crd | egrep '^alameda' \
