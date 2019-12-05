@@ -15,14 +15,15 @@
 #      Usage: ./install.sh -t v4.2.260 -n federatorai -e y -p https://prometheus-k8s.openshift-monitoring:9091 \
 #                   -s ephemeral
 #
-#   -t = tag_number
-#   -n = install_namespace
-#   -e = enable_execution
-#   -p = prometheus_address
-#   -s = storage_type
-#   -l = log_size
-#   -d = data_size
-#   -c = storage_class
+#   -t followed by tag_number
+#   -n followed by install_namespace
+#   -e followed by enable_execution (y or n)
+#   -p followed by prometheus_address
+#   -s followed by storage_type
+#   -l followed by log_size
+#   -d followed by data_size
+#   -c followed by storage_class
+#   -x followed by expose_service (y or n)
 #################################################################################################################
 
 is_pod_ready()
@@ -213,7 +214,7 @@ get_restapi_route()
 }
 
 
-while getopts "t:n:e:p:s:l:d:c:" o; do
+while getopts "t:n:e:p:s:l:d:c:x:" o; do
     case "${o}" in
         t)
             t_arg=${OPTARG}
@@ -239,6 +240,9 @@ while getopts "t:n:e:p:s:l:d:c:" o; do
         c)
             c_arg=${OPTARG}
             ;;
+        x)
+            x_arg=${OPTARG}
+            ;;
         *)
             echo "Warning! wrong paramter, ignore it."
             ;;
@@ -262,6 +266,8 @@ done
 [ "${l_arg}" != "" ] && log_size="${l_arg}"
 [ "${d_arg}" != "" ] && data_size="${d_arg}"
 [ "${c_arg}" != "" ] && storage_class="${c_arg}"
+[ "${x_arg}" != "" ] && expose_service="${x_arg}"
+[ "$expose_service" = "" ] && expose_service="y" # Will expose service by default if not specified
 
 kubectl version|grep -q "^Server"
 if [ "$?" != "0" ];then
@@ -327,6 +333,10 @@ else
     echo "log_size=$log_size"
     echo "data_size=$data_size"
     echo "storage_class=$storage_class"
+    if [ "$openshift_minor_version" = "" ]; then
+        #k8s
+        echo "expose_service=$expose_service"
+    fi
     echo -e "----------------------------------------\n"
 fi
 
@@ -449,6 +459,7 @@ if [ "$silent_mode_disabled" = "y" ];then
             log_size=""
             data_size=""
             storage_class=""
+            expose_service=""
 
             default="y"
             read -r -p "$(tput setaf 127)Do you want to enable execution? [default: y]: $(tput sgr 0): " enable_execution </dev/tty
@@ -488,6 +499,13 @@ if [ "$silent_mode_disabled" = "y" ];then
                 done
             fi
 
+            if [ "$openshift_minor_version" = "" ]; then
+                #k8s
+                default="y"
+                read -r -p "$(tput setaf 127)Do you want to expose Grafana and Rest API services for external access? [default: y]:$(tput sgr 0)" expose_service </dev/tty
+                expose_service=${expose_service:-$default}
+            fi
+
             echo -e "\n----------------------------------------"
             echo "install_namespace = $install_namespace"
             if [[ "$enable_execution" == "y" ]]; then
@@ -501,6 +519,10 @@ if [ "$silent_mode_disabled" = "y" ];then
                 echo "log storage size = $log_size GB"
                 echo "data storage size = $data_size GB"
                 echo "storage class name = $storage_class"
+            fi
+            if [ "$openshift_minor_version" = "" ]; then
+                #k8s
+                echo "expose service = $expose_service"
             fi
             echo "----------------------------------------"
 
@@ -536,6 +558,26 @@ if [[ "$install_alameda" == "y" ]]; then
       class: ${storage_class}
 
 __EOF__
+    fi
+
+    if [ "$openshift_minor_version" = "" ]; then #k8s
+        if [ "$expose_service" = "y" ] || [ "$expose_service" = "Y" ]; then
+            cat >> ${alamedaservice_example} << __EOF__
+  serviceExposures:
+    - name: alameda-grafana
+      nodePort:
+        ports:
+          - nodePort: 31010
+            port: 3001
+      type: NodePort
+    - name: federatorai-rest
+      nodePort:
+        ports:
+          - nodePort: 31011
+            port: 5056
+      type: NodePort
+__EOF__
+        fi
     fi
 
     kubectl apply -f $alamedaservice_example &>/dev/null
