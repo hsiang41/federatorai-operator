@@ -252,8 +252,8 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
-	if err := r.syncServiceAccount(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync serviceAccount failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+	if err := r.createServiceAccount(instance, asp, installResource); err != nil {
+		log.V(-1).Info("Create serviceAccount failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 
@@ -690,7 +690,7 @@ func (r *ReconcileAlamedaService) syncClusterRole(instance *federatoraiv1alpha1.
 	return nil
 }
 
-func (r *ReconcileAlamedaService) syncServiceAccount(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
+func (r *ReconcileAlamedaService) createServiceAccount(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
 	for _, FileStr := range resource.ServiceAccountList {
 		resourceSA := componentConfig.NewServiceAccount(FileStr)
 		if err := controllerutil.SetControllerReference(instance, resourceSA, r.scheme); err != nil {
@@ -708,11 +708,6 @@ func (r *ReconcileAlamedaService) syncServiceAccount(instance *federatoraiv1alph
 			log.Info("Successfully Creating Resource ServiceAccount", "resourceSA.Name", resourceSA.Name)
 		} else if err != nil {
 			return errors.Errorf("get serviceAccount %s/%s failed: %s", resourceSA.Namespace, resourceSA.Name, err.Error())
-		} else {
-			err = r.client.Update(context.TODO(), resourceSA)
-			if err != nil {
-				return errors.Errorf("Update serviceAccount %s/%s failed: %s", resourceSA.Namespace, resourceSA.Name, err.Error())
-			}
 		}
 	}
 	return nil
