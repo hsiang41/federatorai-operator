@@ -194,6 +194,15 @@ get_grafana_route()
         else
             echo "Warning! Failed to obtain grafana route address."
         fi
+    else
+        if [ "$expose_service" = "y" ]; then
+            echo -e "\n========================================"
+            echo "You can now access GUI through $(tput setaf 6)https://<YOUR IP>:$grafana_node_port $(tput sgr 0)"
+            echo "Default login credential is $(tput setaf 6)admin/admin$(tput sgr 0)"
+            echo -e "\nAlso, you can start to apply alamedascaler CR for the namespace you would like to monitor."
+            echo "$(tput setaf 6)Review administration guide for further details.$(tput sgr 0)"
+            echo "========================================"
+        fi
     fi
 }
 
@@ -209,6 +218,14 @@ get_restapi_route()
         echo "========================================"
         else
             echo "Warning! Failed to obtain Federatorai REST API route address."
+        fi
+    else
+        if [ "$expose_service" = "y" ]; then
+            echo -e "\n========================================"
+            echo "You can now access Federatorai REST API through $(tput setaf 6)https://<YOUR IP>:$rest_api_node_port $(tput sgr 0)"
+            echo "Default login credential is $(tput setaf 6)admin/admin$(tput sgr 0)"
+            echo "The REST API online document can be find in $(tput setaf 6)https://<YOUR IP>:$rest_api_node_port/apis/v1/swagger/index.html $(tput sgr 0)"
+            echo "========================================"
         fi
     fi
 }
@@ -560,6 +577,9 @@ if [[ "$install_alameda" == "y" ]]; then
 __EOF__
     fi
 
+    grafana_node_port="31010"
+    rest_api_node_port="31011"
+
     if [ "$openshift_minor_version" = "" ]; then #k8s
         if [ "$expose_service" = "y" ] || [ "$expose_service" = "Y" ]; then
             cat >> ${alamedaservice_example} << __EOF__
@@ -567,13 +587,13 @@ __EOF__
     - name: alameda-grafana
       nodePort:
         ports:
-          - nodePort: 31010
+          - nodePort: ${grafana_node_port}
             port: 3001
       type: NodePort
     - name: federatorai-rest
       nodePort:
         ports:
-          - nodePort: 31011
+          - nodePort: ${rest_api_node_port}
             port: 5056
       type: NodePort
 __EOF__
