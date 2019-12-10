@@ -96,6 +96,15 @@ check_version()
     oc version 2>/dev/null|grep "oc v"|grep -q " v[4-9]"
     if [ "$?" = "0" ];then
         # oc version is 4-9, passed
+        openshift_minor_version="12"
+        return 0
+    fi
+
+    # OpenShift Container Platform 4.x
+    oc version 2>/dev/null|grep -q "Server Version: 4"
+    if [ "$?" = "0" ];then
+        # oc server version is 4, passed
+        openshift_minor_version="12"
         return 0
     fi
 
@@ -226,6 +235,46 @@ get_restapi_route()
             echo "Default login credential is $(tput setaf 6)admin/admin$(tput sgr 0)"
             echo "The REST API online document can be find in $(tput setaf 6)https://<YOUR IP>:$rest_api_node_port/apis/v1/swagger/index.html $(tput sgr 0)"
             echo "========================================"
+        fi
+    fi
+}
+
+get_recommended_prometheus_url()
+{
+    if [[ "$openshift_minor_version" == "11" ]] || [[ "$openshift_minor_version" == "12" ]]; then
+        prometheus_port="9091"
+        prometheus_protocol="https"
+    else
+        prometheus_port="9090"
+        prometheus_protocol="http"
+    fi
+
+    while read namespace name _junk
+    do
+        prometheus_namespace="$namespace"
+        prometheus_svc_name="$name"
+    done < <(kubectl get svc --all-namespaces |grep $prometheus_port|sort|head -1)
+
+    key="`kubectl get svc $prometheus_svc_name -n $prometheus_namespace -o yaml|awk '/selector:/{getline; print}'|cut -d ":" -f1|xargs`"
+    value="`kubectl get svc $prometheus_svc_name -n $prometheus_namespace -o yaml|awk '/selector:/{getline; print}'|cut -d ":" -f2|xargs`"
+
+    if [ "${key}" != "" ] && [ "${value}" != "" ]; then
+        prometheus_pod_name="`kubectl get pods -l "${key}=${value}" -n $prometheus_namespace|grep -v NAME|awk '{print $1}'|grep ".*\-[0-9]$"|sort -n|head -1`"
+    fi
+
+    # Assign default value
+    if [ "$prometheus_pod_name" != "" ]; then
+        #To fix prometheus inconsist data issue
+        if [[ "$openshift_minor_version" == "11" ]] || [[ "$openshift_minor_version" == "12" ]]; then
+            prometheus_url="$prometheus_protocol://$prometheus_pod_name.prometheus-k8s.openshift-monitoring:$prometheus_port"
+        else
+            prometheus_url="$prometheus_protocol://$prometheus_pod_name.$prometheus_svc_name.$prometheus_namespace:$prometheus_port"
+        fi
+    else
+        if [[ "$openshift_minor_version" == "11" ]] || [[ "$openshift_minor_version" == "12" ]]; then
+            prometheus_url="$prometheus_protocol://prometheus-k8s.openshift-monitoring:$prometheus_port"
+        else
+            prometheus_url="$prometheus_protocol://$prometheus_svc_name.$prometheus_namespace:$prometheus_port"
         fi
     fi
 }
@@ -482,13 +531,8 @@ if [ "$silent_mode_disabled" = "y" ];then
             read -r -p "$(tput setaf 127)Do you want to enable execution? [default: y]: $(tput sgr 0): " enable_execution </dev/tty
             enable_execution=${enable_execution:-$default}
 
-            if [[ "$openshift_minor_version" == "11" ]]; then
-                default="https://prometheus-k8s.openshift-monitoring:9091"
-            elif [[ "$openshift_minor_version" == "9" ]]; then
-                default="http://prom-prometheus-operator-prometheus.monitoring.svc:9090"
-            else
-                default="https://prometheus-k8s.openshift-monitoring:9091"
-            fi
+            get_recommended_prometheus_url
+            default="$prometheus_url"
 
             echo "$(tput setaf 127)Enter the Prometheus service address"
             read -r -p "[default: ${default}]: $(tput sgr 0)" prometheus_address </dev/tty
