@@ -49,6 +49,7 @@ prepare_os_commands()
 {
     [ "`which timeout`" != "" ] && CMD_TIMEOUT="timeout --preserve-status -s KILL"
     [ "`which mkfs.ext4`" != "" ] && CMD_MKFS="mkfs.ext4 -j"
+    [ "`which oc`" != "" ] && CMD_KUBECTL="oc" || CMD_KUBECTL="kubectl"
 }
 
 # get file
@@ -282,6 +283,16 @@ verbose=0
 # find command
 prepare_os_commands
 
+# This program need to be run as root because it use loop device as mounted filesystem
+if [ "`id -u`" != "0" ]; then
+    cat << __EOF__
+
+    Error! This program need to run by root user.
+
+__EOF__
+    exit 1
+fi
+
 # get arguments if supported
 [ "`which getopts`" != "" ] && while getopts "h?vl:c:o:k" OPTION
 do
@@ -326,6 +337,22 @@ then
 fi
 rm -f ${outfile}.temp
 
+# Openshift CLI may have only "oc" command but no "kubectl" command
+if [ "${CMD_KUBECTL}" = "oc" ]; then
+    ln -sfv `which oc` ${workdir}/kubectl
+    export PATH=${workdir}:${PATH}
+fi
+
+# check if kubectl command can be exectuted properly.
+if [ "`kubectl get nodes 2> /dev/null`" = "" ]; then
+    cat << __EOF__
+
+    Error! Failed in running command '${CMD_KUBECTL} get nodes'.
+
+__EOF__
+    exit 1
+fi
+
 # prepare files only necessary if we are running inside cluster's node
 kubectl get nodes | grep `hostname` > /dev/null && (
     # common
@@ -369,7 +396,13 @@ kubectl get nodes | grep `hostname` > /dev/null && (
 # k8s
 (
     get_command 180 k8s/current-context "kubectl config current-context"
-    get_command 180 k8s/version "kubectl version"
+    # get_command 180 k8s/version "kubectl version"
+    if [ "${CMD_KUBECTL}" = "oc" ]; then
+        # get both k8s and oc version
+        get_command 180 k8s/version "oc version; `which kubectl` version"
+    else
+        get_command 180 k8s/version "`which kubectl` version"
+    fi
     get_command 180 k8s/nodes.yaml "kubectl get nodes -o yaml"
 ) | tee -a ${workdir}/xray.log
 
@@ -396,7 +429,7 @@ kubectl get nodes | grep `hostname` > /dev/null && (
             fn_list="`kubectl -n ${ns} exec ${pod} -- find /var/log/alameda -type f`"
             echo ${fn_list} \
                 | while read fn junk; do \
-                    kubectl -n ${ns} cp ${pod}:${fn} ${dest_dir}; \
+                    kubectl -n ${ns} cp ${pod}:${fn} ${dest_dir}/${fn}; \
                 done
         done
     fi
