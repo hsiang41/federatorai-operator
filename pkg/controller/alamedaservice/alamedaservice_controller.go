@@ -1206,6 +1206,9 @@ func (r *ReconcileAlamedaService) syncRoute(instance *federatoraiv1alpha1.Alamed
 		} else if err != nil {
 			return errors.Errorf("get route %s/%s failed: %s", resourceRT.Namespace, resourceRT.Name, err.Error())
 		} else {
+			if foundRT.Spec.TLS == nil {
+				foundRT.Spec.TLS = &routev1.TLSConfig{}
+			}
 			foundRT.Spec.TLS.InsecureEdgeTerminationPolicy = resourceRT.Spec.TLS.InsecureEdgeTerminationPolicy
 			foundRT.Spec.TLS.Termination = resourceRT.Spec.TLS.Termination
 			foundRT.Spec.Port = resourceRT.Spec.Port

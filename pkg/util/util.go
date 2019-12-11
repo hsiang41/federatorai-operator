@@ -107,6 +107,13 @@ const (
 	//Delete Deployment When Modify ConfigMap or Service(Temporary strategy)
 	GrafanaYaml            = "Deployment/alameda-grafanaDM.yaml"
 	GrafanaDatasourcesName = "grafana-datasources"
+
+	// Influxdb environment variables name
+	AlamedaInfluxDBAdminUserEnvName     = "INFLUXDB_ADMIN_USER"
+	AlamedaInfluxDBAdminPasswordEnvName = "INFLUXDB_ADMIN_PASSWORD"
+	AlamedaInfluxDBHTTPSEnabledEnvName  = "INFLUXDB_HTTP_HTTPS_ENABLED"
+	
+	AlamedaInfluxDBAPIPort              = 8086
 )
 
 var (

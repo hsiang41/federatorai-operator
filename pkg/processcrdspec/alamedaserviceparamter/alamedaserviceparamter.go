@@ -255,6 +255,32 @@ func GetGUIResource() *Resource {
 	return &r
 }
 
+// GetAlamedaInfluxdbResource returns service that needs to be installed for influxdb
+func GetAlamedaInfluxdbResource() Resource {
+	r, _ := getResourceFromList(influxDBList)
+	return r
+}
+
+// GetAlamedaInfluxdbService returns service that needs to be installed for influxdb
+func GetAlamedaInfluxdbDeployment() string {
+	for _, r := range influxDBList {
+		if strings.HasPrefix(r, "Deployment/") {
+			return r
+		}
+	}
+	return ""
+}
+
+// GetAlamedaInfluxdbService returns service that needs to be installed for influxdb
+func GetAlamedaInfluxdbService() string {
+	for _, r := range influxDBList {
+		if strings.HasPrefix(r, "Service/") {
+			return r
+		}
+	}
+	return ""
+}
+
 // GetFedemeterResource returns resource that needs to be installed for Federmeter
 func GetFedemeterResource() *Resource {
 	r, _ := getResourceFromList(fedemeterList)
@@ -744,6 +770,10 @@ func (r *Resource) GetAll() []string {
 	}
 
 	return files
+}
+
+func (r *Resource) Delete(in Resource) {
+	r.delete(in)
 }
 
 func (r *Resource) add(in Resource) {

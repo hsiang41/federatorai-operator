@@ -319,6 +319,18 @@
   version = "v1.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:47eb60f412a2f23ef2f21294b3588caf1e33b16fa45e238527f3f1afc6f11708"
+  name = "github.com/influxdata/influxdb1-client"
+  packages = [
+    "models",
+    "pkg/escape",
+    "v2",
+  ]
+  pruneopts = "NT"
+  revision = "8bf82d3c094dc06be9da8e5bf9d3589b6ea032ae"
+
+[[projects]]
   digest = "1:4276c736d04bbfd135cea2f6761e1020317b0a4acb095e6d95c48649437af6d6"
   name = "github.com/jetstack/cert-manager"
   packages = [
@@ -396,7 +408,9 @@
   packages = [
     "apps",
     "apps/v1",
+    "route",
     "route/v1",
+    "security",
     "security/v1",
   ]
   pruneopts = "NT"
@@ -610,6 +624,14 @@
   ]
   pruneopts = "NT"
   revision = "0f29369cfe4552d0e4bcddc57cc75f4d7e672a33"
+
+[[projects]]
+  branch = "master"
+  digest = "1:570d5f05d5193a759ddc6d4c2c5165247707fa550dc6f5c9f22736dd8139464d"
+  name = "golang.org/x/sync"
+  packages = ["errgroup"]
+  pruneopts = "NT"
+  revision = "cd5d95a43a6e21273425c7ae415d3df9ea832eeb"
 
 [[projects]]
   branch = "master"
@@ -1164,18 +1186,22 @@
     "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/empty",
     "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap",
+    "github.com/influxdata/influxdb1-client/v2",
     "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1",
+    "github.com/openshift/api/route",
     "github.com/openshift/api/route/v1",
+    "github.com/openshift/api/security",
     "github.com/openshift/api/security/v1",
     "github.com/operator-framework/operator-sdk/pkg/k8sutil",
     "github.com/operator-framework/operator-sdk/pkg/leader",
     "github.com/operator-framework/operator-sdk/pkg/metrics",
     "github.com/pkg/errors",
-    "github.com/spf13/pflag",
+    "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/assert",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
+    "golang.org/x/sync/errgroup",
     "google.golang.org/genproto/googleapis/rpc/code",
     "google.golang.org/genproto/googleapis/rpc/status",
     "google.golang.org/grpc",
@@ -1199,6 +1225,7 @@
     "k8s.io/apimachinery/pkg/util/uuid",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/client-go/kubernetes",
+    "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/util/cert",

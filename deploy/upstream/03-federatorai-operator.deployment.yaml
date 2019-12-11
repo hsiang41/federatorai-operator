@@ -23,6 +23,17 @@ spec:
         app: Federator.ai
     spec:
       serviceAccountName: federatorai-operator
+      initContainers:
+        - name: upgrader
+          image: quay.io/prophetstor/federatorai-operator-ubi:latest
+          command:
+          - federatorai-operator
+          args:
+          - "upgrade"
+          - "influxdb"
+          volumeMounts:
+          - mountPath: /var/log/alameda
+            name: log
       containers:
         - name: federatorai-operator
           # Replace this with the built image name
@@ -47,4 +58,9 @@ spec:
               value: "federatorai-operator"
             - name: DISABLE_OPERAND_RESOURCE_PROTECTION
               value: "true" 
-
+          volumeMounts:
+          - mountPath: /var/log/alameda
+            name: log
+      volumes:
+        - name: log
+          emptyDir: {}

@@ -186,3 +186,15 @@ func TestGetInstallResource(t *testing.T) {
 	}
 
 }
+
+func TestGetAlamedaInfluxdbService(t *testing.T) {
+	s := GetAlamedaInfluxdbService()
+	assert := assert.New(t)
+	assert.Equal("Service/alameda-influxdbSV.yaml", s)
+}
+
+func TestGetAlamedaInfluxdbDeployment(t *testing.T) {
+	s := GetAlamedaInfluxdbDeployment()
+	assert := assert.New(t)
+	assert.Equal("Deployment/alameda-influxdbDM.yaml", s)
+}

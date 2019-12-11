@@ -1,18 +1,22 @@
-package main
+package manager
 
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"runtime"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/pkg/apis/autoscaling/v1alpha1"
 	fedOperator "github.com/containers-ai/federatorai-operator"
 	assets "github.com/containers-ai/federatorai-operator/assets"
+	"github.com/containers-ai/federatorai-operator/cmd/upgrader"
 	"github.com/containers-ai/federatorai-operator/pkg/apis"
 	assetsBin "github.com/containers-ai/federatorai-operator/pkg/assets"
 	"github.com/containers-ai/federatorai-operator/pkg/controller"
@@ -22,17 +26,11 @@ import (
 	"github.com/containers-ai/federatorai-operator/pkg/protocol/grpc"
 	"github.com/containers-ai/federatorai-operator/pkg/version"
 
-	certmanagerv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-
 	routev1 "github.com/openshift/api/route/v1"
 	securityv1 "github.com/openshift/api/security/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
-	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
-	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 
 	apiextensionv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -40,12 +38,38 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	rest "k8s.io/client-go/rest"
+	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
+
+var (
+	rootCmd = &cobra.Command{
+		Use:   "federatorai-operator",
+		Short: "",
+		Long:  "",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			execute()
+			return nil
+		},
+	}
+)
+
+func init() {
+	rootCmd.AddCommand(upgrader.UpgradeRootCmd)
+
+	rootCmd.Flags().StringVar(&configurationFilePath, "config", "/etc/federatorai/operator/operator.toml", "File path to federatorai-operator coniguration")
+}
+
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+}
 
 const (
 	envVarPrefix  = "FEDERATORAI_OPERATOR"
@@ -58,8 +82,6 @@ var (
 	metricsPort           int32
 	configurationFilePath string
 
-	federatoraiOperatorFlagSet = pflag.NewFlagSet("federatorai-operator", pflag.ExitOnError)
-
 	fedOperatorConfig fedOperator.Config
 
 	log = logf.Log.WithName("manager")
@@ -68,24 +90,6 @@ var (
 
 	registerdAPIResources = make(map[string]bool)
 )
-
-func init() {
-
-	initFlags()
-	initConfiguration()
-	initLogger()
-}
-
-func initFlags() {
-
-	federatoraiOperatorFlagSet.Int32Var(&metricsPort, "metrics.port", 8383, "port to export metrics data")
-	federatoraiOperatorFlagSet.StringVar(&configurationFilePath, "config", "/etc/federatorai/operator/operator.toml", "File path to federatorai-operator coniguration")
-
-	pflag.CommandLine.AddFlagSet(federatoraiOperatorFlagSet)
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-
-	pflag.Parse()
-}
 
 func initConfiguration() {
 
@@ -101,9 +105,6 @@ func initViperSetting() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	viper.AllowEmptyEnv(allowEmptyEnv)
-	if err := viper.BindPFlags(federatoraiOperatorFlagSet); err != nil {
-		panic(err)
-	}
 }
 
 func mergeViperValueWithDefaultConfig() {
@@ -165,8 +166,10 @@ func printConfiguration() {
 	}
 }
 
-func main() {
+func execute() {
 
+	initConfiguration()
+	initLogger()
 	printVersion()
 	printConfiguration()
 
@@ -235,10 +238,6 @@ func main() {
 		os.Exit(1)
 	}
 	if err := autoscaling_v1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-	if err := certmanagerv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

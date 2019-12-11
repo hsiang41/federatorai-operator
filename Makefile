@@ -48,7 +48,7 @@ depend-update:
 
 .PHONY: build
 build: pkg/assets/bindata.go## build binaries
-	$(DOCKER_CMD) go build $(GOGCFLAGS) -ldflags "$(LD_FLAGS)" -o "$(BUILD_DEST)" "$(REPO_PATH)/cmd/manager"
+	$(DOCKER_CMD) go build $(GOGCFLAGS) -ldflags "$(LD_FLAGS)" -o "$(BUILD_DEST)" "$(REPO_PATH)/cmd"
 
 .PHONY: images
 images: ## Create images
