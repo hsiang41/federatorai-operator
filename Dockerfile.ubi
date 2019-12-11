@@ -1,6 +1,13 @@
 FROM openshift/origin-release:golang-1.13 as builder
 WORKDIR /go/src/github.com/containers-ai/federatorai-operator
 COPY . .
+RUN set -x \
+    && export GIT_COMMIT=`git rev-parse --short HEAD || echo 'none'` \
+    && export _TMP_STR=`git show-ref --abbrev --head | grep "^${GIT_COMMIT} " | grep -v "HEAD$" | head -1 | awk '{print $NF}'` \
+    && [ "${_TMP_STR}" = "" ] && export GIT_REF="HEAD" || export GIT_REF="${_TMP_STR}" \
+    && [ "`git diff --shortstat`" = "" ] && export GIT_DIRTY="" || export GIT_DIRTY="-dirty" \
+    && export CODE_VERSION="${GIT_REF}@${GIT_COMMIT}${GIT_DIRTY}" \
+    && echo "CODE_VERSION=${CODE_VERSION}" > version.txt
 ENV NO_DOCKER=1
 ENV BUILD_DEST=/go/bin/federatorai-operator
 RUN unset VERSION && make build
@@ -9,7 +16,8 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal
 ENV SUMMARY="Federator.ai Operator is an operator that manages Federator.ai components for an OpenShift cluster" \
     DESCRIPTION="Federator.ai Operator is an operator that manages Federator.ai components for an OpenShift cluster" \
     NAME="Federator.ai Operator" \
-    VERSION="latest"
+    VERSION="latest" \
+    AIHOME="/opt/alameda/federatorai-operator"
 
 LABEL summary="$SUMMARY" \
       description="$DESCRIPTION" \
@@ -29,6 +37,7 @@ COPY --from=builder /go/bin/federatorai-operator /usr/bin/
 COPY --from=builder /go/src/github.com/containers-ai/federatorai-operator/etc/operator.toml /etc/federatorai/operator/operator.toml
 # COPY --from=builder /go/src/github.com/containers-ai/federatorai-operator/install /manifests
 COPY --from=builder /go/src/github.com/containers-ai/federatorai-operator/xray/xray.sh /xray.sh
+COPY --from=builder /go/src/github.com/containers-ai/federatorai-operator/version.txt ${AIHOME}/etc/
 
 RUN set -x \
     && microdnf update -y \
