@@ -253,7 +253,7 @@ get_recommended_prometheus_url()
     do
         prometheus_namespace="$namespace"
         prometheus_svc_name="$name"
-    done < <(kubectl get svc --all-namespaces |grep $prometheus_port|sort|head -1)
+    done<<<"$(kubectl get svc --all-namespaces |grep $prometheus_port|sort|head -1)"
 
     key="`kubectl get svc $prometheus_svc_name -n $prometheus_namespace -o yaml|awk '/selector:/{getline; print}'|cut -d ":" -f1|xargs`"
     value="`kubectl get svc $prometheus_svc_name -n $prometheus_namespace -o yaml|awk '/selector:/{getline; print}'|cut -d ":" -f2|xargs`"
