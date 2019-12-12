@@ -58,6 +58,7 @@ pods_ready()
 
 leave_prog()
 {
+    scale_up_pods
     if [ ! -z "$(ls -A $file_folder)" ]; then      
         echo -e "\n$(tput setaf 6)Downloaded YAML files are located under $file_folder $(tput sgr 0)"
     fi
@@ -73,13 +74,22 @@ check_version()
     oc version 2>/dev/null|grep "oc v"|grep -q " v[4-9]"
     if [ "$?" = "0" ];then
         # oc version is 4-9, passed
+        openshift_minor_version="12"
+        return 0
+    fi
+
+    # OpenShift Container Platform 4.x
+    oc version 2>/dev/null|grep -q "Server Version: 4"
+    if [ "$?" = "0" ];then
+        # oc server version is 4, passed
+        openshift_minor_version="12"
         return 0
     fi
 
     oc version 2>/dev/null|grep "oc v"|grep -q " v[0-2]"
     if [ "$?" = "0" ];then
         # oc version is 0-2, failed
-        echo -e "\n$(tput setaf 1)Error! OpenShift version less than 3.$openshift_required_minor_version is not supported by Federator.ai$(tput sgr 0)"
+        echo -e "\n$(tput setaf 10)Error! OpenShift version less than 3.$openshift_required_minor_version is not supported by Federator.ai$(tput sgr 0)"
         exit 5
     fi
 
@@ -89,11 +99,14 @@ check_version()
     k8s_version=`kubectl version 2>/dev/null|grep Server|grep -o "Minor:\"[0-9]*\""|cut -d '"' -f2`
 
     if [ "$openshift_minor_version" != "" ] && [ "$openshift_minor_version" -lt "$openshift_required_minor_version" ]; then
-        echo -e "\n$(tput setaf 1)Error! OpenShift version less than 3.$openshift_required_minor_version is not supported by Federator.ai$(tput sgr 0)"
+        echo -e "\n$(tput setaf 10)Error! OpenShift version less than 3.$openshift_required_minor_version is not supported by Federator.ai$(tput sgr 0)"
         exit 5
     elif [ "$openshift_minor_version" = "" ] && [ "$k8s_version" != "" ] && [ "$k8s_version" -lt "$k8s_required_version" ]; then
-        echo -e "\n$(tput setaf 1)Error! Kubernetes version less than 1.$k8s_required_version is not supported by Federator.ai$(tput sgr 0)"
+        echo -e "\n$(tput setaf 10)Error! Kubernetes version less than 1.$k8s_required_version is not supported by Federator.ai$(tput sgr 0)"
         exit 6
+    elif [ "$openshift_minor_version" = "" ] && [ "$k8s_version" = "" ]; then
+        echo -e "\n$(tput setaf 10)Error! Can't get Kubernetes or OpenShift version$(tput sgr 0)"
+        exit 5
     fi
 }
 
@@ -184,6 +197,7 @@ delete_all_alamedascaler()
         kubectl delete alamedascaler $alamedascaler_name -n $alamedascaler_ns
         if [ "$?" != "0" ]; then
             echo -e "\n$(tput setaf 1)Error in deleting old alamedascaler named $alamedascaler_name in ns $alamedascaler_ns.$(tput sgr 0)"
+            leave_prog
             exit 8
         fi
     done <<< "$(kubectl get alamedascaler --all-namespaces --output jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.metadata.namespace}' 2>/dev/null)"
@@ -206,6 +220,7 @@ run_preloader_command()
     kubectl exec -n $install_namespace $current_preloader_pod_name -- /opt/alameda/federatorai-agent/bin/transmitter enable
     if [ "$?" != "0" ]; then
         echo -e "\n$(tput setaf 1)Error in executing preloader enable command.$(tput sgr 0)"
+        leave_prog
         exit 8
     fi
     echo "Checking..."
@@ -238,6 +253,7 @@ run_futuremode_preloader()
     kubectl exec -n $install_namespace $current_preloader_pod_name -- /opt/alameda/federatorai-agent/bin/transmitter loadfuture --hours=$future_mode_length
     if [ "$?" != "0" ]; then
         echo -e "\n$(tput setaf 1)Error in executing preloader loadfuture command.$(tput sgr 0)"
+        leave_prog
         exit 8
     fi
 
@@ -248,6 +264,34 @@ run_futuremode_preloader()
     end=`date +%s`
     duration=$((end-start))
     echo "Duration run_futuremode_preloader = $duration" >> $debug_log
+}
+
+scale_down_pods()
+{
+    original_alameda_ai_replicas="`kubectl get deploy alameda-ai -o jsonpath='{.spec.replicas}'`"
+    kubectl patch deployment alameda-ai -n $install_namespace -p '{"spec":{"replicas": 0}}'
+
+    kubectl patch deployment alameda-ai-dispatcher -n $install_namespace -p '{"spec":{"replicas": 0}}'
+}
+
+scale_up_pods()
+{
+    if [ "`kubectl get deploy alameda-ai -o jsonpath='{.spec.replicas}'`" -eq "0" ]; then
+        if [ "$original_alameda_ai_replicas" != "" ]; then
+            kubectl patch deployment alameda-ai -n $install_namespace -p "{\"spec\":{\"replicas\": $original_alameda_ai_replicas}}"
+        else
+            kubectl patch deployment alameda-ai -n $install_namespace -p '{"spec":{"replicas": 1}}'
+        fi
+        do_something="y"
+    fi
+
+    if [ "`kubectl get deploy alameda-ai-dispatcher -o jsonpath='{.spec.replicas}'`" -eq "0" ]; then
+        kubectl patch deployment alameda-ai-dispatcher -n $install_namespace -p '{"spec":{"replicas": 1}}'
+        do_something="y"
+    fi
+    if [ "$do_something" = "y" ]; then
+        wait_until_pods_ready 600 30 $install_namespace 5
+    fi
 }
 
 reschedule_dispatcher()
@@ -274,22 +318,6 @@ reschedule_dispatcher()
     duration=$((end-start))
     echo "Duration reschedule_dispatcher = $duration" >> $debug_log
 
-}
-
-get_grafana_route()
-{
-    if [ "$openshift_minor_version" != "" ] ; then
-        link=`oc get route -n $1 2>/dev/null|grep grafana|awk '{print $2}'`
-        if [ "$link" != "" ] ; then
-            echo -e "\n========================================"
-            echo -e "\n$(tput setaf 2)Great! Prediction/Planning jobs are triggered. You could grab a cup of coffee."
-            echo "Access GUI through $(tput setaf 6)http://${link} $(tput sgr 0)"
-            echo "Default login credential is $(tput setaf 6)admin/admin$(tput sgr 0)"
-            echo "========================================"
-        else
-            echo "Warning! Failed to obtain grafana route address."
-        fi
-    fi
 }
 
 patch_datahub_for_preloader()
@@ -415,6 +443,7 @@ verify_metrics_exist()
     if [ "$metrics_num" -lt "12" ]; then
         echo -e "\n$(tput setaf 1)Error! metrics in alameda_metric is not complete.$(tput sgr 0)"
         echo "$metrics_list"
+        leave_prog
         exit 8
     fi
     echo "Done"
@@ -621,7 +650,7 @@ check_prediction_status()
 
         re='^[0-9]+$'
         if ! [[ $xx =~ $re ]] ; then
-        echo "error: Not a number" >&2; exit 1
+            echo "error: Not a number" >&2; exit 1
         else
             yy=$(($yy + $xx))
         fi
@@ -811,9 +840,10 @@ if [ "$run_preloader" = "y" ]; then
     patch_datahub_for_preloader
     # clean up again
     clean_environment_operations
-
+    scale_down_pods
     run_preloader_command
     verify_metrics_exist
+    scale_up_pods
     reschedule_dispatcher
     #check_prediction_status
 fi
