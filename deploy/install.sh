@@ -38,10 +38,10 @@ pods_ready()
   namespace="$1"
 
   kubectl get pod -n $namespace \
-    -o=jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
-      | while read name status _junk; do
+    -o=jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\t"}{.status.phase}{"\n"}{end}' \
+      | while read name status phase _junk; do
           if [ "$status" != "True" ]; then
-            echo "Waiting pod $name in namespace $namespace to be ready..."
+            echo "Waiting pod $name in namespace $namespace to be ready. Current phase: $phase"
             return 1
           fi
         done || return 1
@@ -245,6 +245,7 @@ get_recommended_prometheus_url()
         prometheus_port="9091"
         prometheus_protocol="https"
     else
+        # OpenShift 3.9 # K8S
         prometheus_port="9090"
         prometheus_protocol="http"
     fi
@@ -266,13 +267,13 @@ get_recommended_prometheus_url()
     if [ "$prometheus_pod_name" != "" ]; then
         #To fix prometheus inconsist data issue
         if [[ "$openshift_minor_version" == "11" ]] || [[ "$openshift_minor_version" == "12" ]]; then
-            prometheus_url="$prometheus_protocol://$prometheus_pod_name.prometheus-k8s.openshift-monitoring:$prometheus_port"
+            prometheus_url="$prometheus_protocol://$prometheus_pod_name.prometheus-operated.openshift-monitoring:$prometheus_port"
         else
             prometheus_url="$prometheus_protocol://$prometheus_pod_name.$prometheus_svc_name.$prometheus_namespace:$prometheus_port"
         fi
     else
         if [[ "$openshift_minor_version" == "11" ]] || [[ "$openshift_minor_version" == "12" ]]; then
-            prometheus_url="$prometheus_protocol://prometheus-k8s.openshift-monitoring:$prometheus_port"
+            prometheus_url="$prometheus_protocol://prometheus-operated.openshift-monitoring:$prometheus_port"
         else
             prometheus_url="$prometheus_protocol://$prometheus_svc_name.$prometheus_namespace:$prometheus_port"
         fi
@@ -353,6 +354,7 @@ fi
 
 previous_alameda_namespace="`kubectl get pods --all-namespaces |grep "alameda-ai-"|awk '{print $1}'|head -1`"
 previous_tag="`kubectl get pods -n $previous_alameda_namespace -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image 2>/dev/null| grep datahub | head -1 | cut -d ':' -f2`"
+previous_alamedaservice="`kubectl get alamedaservice -n $previous_alameda_namespace -o custom-columns=NAME:.metadata.name 2>/dev/null|grep -v NAME|head -1`"
 
 if [ "$previous_alameda_namespace" != "" ];then
     need_upgrade="y"
@@ -505,98 +507,87 @@ sed -i "s/version: latest/version: ${tag_number}/g" ${alamedaservice_example}
 
 echo "========================================"
 
-if [ "$silent_mode_disabled" = "y" ];then
+if [ "$silent_mode_disabled" = "y" ] && [ "$need_upgrade" != "y" ];then
 
-    while [[ "$install_alameda" != "y" ]] && [[ "$install_alameda" != "n" ]]
+    while [[ "$information_correct" != "y" ]] && [[ "$information_correct" != "Y" ]]
     do
+        # init variables
+        enable_execution=""
+        prometheus_address=""
+        storage_type=""
+        log_size=""
+        data_size=""
+        storage_class=""
+        expose_service=""
+
         default="y"
-        read -r -p "$(tput setaf 2)Do you want to launch interactive installation of Federator.ai [default: y]: $(tput sgr 0)" install_alameda </dev/tty
-        install_alameda=${install_alameda:-$default}
-    done
+        read -r -p "$(tput setaf 127)Do you want to enable execution? [default: y]: $(tput sgr 0): " enable_execution </dev/tty
+        enable_execution=${enable_execution:-$default}
 
-    if [[ "$install_alameda" == "y" ]]; then
+        get_recommended_prometheus_url
+        default="$prometheus_url"
 
-        while [[ "$information_correct" != "y" ]] && [[ "$information_correct" != "Y" ]]
+        echo "$(tput setaf 127)Enter the Prometheus service address"
+        read -r -p "[default: ${default}]: $(tput sgr 0)" prometheus_address </dev/tty
+        prometheus_address=${prometheus_address:-$default}
+
+        while [[ "$storage_type" != "ephemeral" ]] && [[ "$storage_type" != "persistent" ]]
         do
-            # init variables
-            enable_execution=""
-            prometheus_address=""
-            storage_type=""
-            log_size=""
-            data_size=""
-            storage_class=""
-            expose_service=""
-
-            default="y"
-            read -r -p "$(tput setaf 127)Do you want to enable execution? [default: y]: $(tput sgr 0): " enable_execution </dev/tty
-            enable_execution=${enable_execution:-$default}
-
-            get_recommended_prometheus_url
-            default="$prometheus_url"
-
-            echo "$(tput setaf 127)Enter the Prometheus service address"
-            read -r -p "[default: ${default}]: $(tput sgr 0)" prometheus_address </dev/tty
-            prometheus_address=${prometheus_address:-$default}
-
-            while [[ "$storage_type" != "ephemeral" ]] && [[ "$storage_type" != "persistent" ]]
-            do
-                default="ephemeral"
-                echo "$(tput setaf 127)Which storage type you would like to use? ephemeral or persistent?"
-                read -r -p "[default: ephemeral]: $(tput sgr 0)" storage_type </dev/tty
-                storage_type=${storage_type:-$default}
-            done
-
-            if [[ "$storage_type" == "persistent" ]]; then
-                default="10"
-                read -r -p "$(tput setaf 127)Specify log storage size [ex: 10 for 10GB, default: 10]: $(tput sgr 0)" log_size </dev/tty
-                log_size=${log_size:-$default}
-                default="10"
-                read -r -p "$(tput setaf 127)Specify data storage size [ex: 10 for 10GB, default: 10]: $(tput sgr 0)" data_size </dev/tty
-                data_size=${data_size:-$default}
-
-                while [[ "$storage_class" == "" ]]
-                do
-                    read -r -p "$(tput setaf 127)Specify storage class name: $(tput sgr 0)" storage_class </dev/tty
-                done
-            fi
-
-            if [ "$openshift_minor_version" = "" ]; then
-                #k8s
-                default="y"
-                read -r -p "$(tput setaf 127)Do you want to expose Grafana and Rest API services for external access? [default: y]:$(tput sgr 0)" expose_service </dev/tty
-                expose_service=${expose_service:-$default}
-            fi
-
-            echo -e "\n----------------------------------------"
-            echo "install_namespace = $install_namespace"
-            if [[ "$enable_execution" == "y" ]]; then
-                echo "enable_execution = true"
-            else
-                echo "enable_execution = false"
-            fi
-            echo "prometheus_address = $prometheus_address"
-            echo "storage_type = $storage_type"
-            if [[ "$storage_type" == "persistent" ]]; then
-                echo "log storage size = $log_size GB"
-                echo "data storage size = $data_size GB"
-                echo "storage class name = $storage_class"
-            fi
-            if [ "$openshift_minor_version" = "" ]; then
-                #k8s
-                echo "expose service = $expose_service"
-            fi
-            echo "----------------------------------------"
-
-            default="y"
-            read -r -p "$(tput setaf 2)Is the above information correct [default: y]:$(tput sgr 0)" information_correct </dev/tty
-            information_correct=${information_correct:-$default}
+            default="ephemeral"
+            echo "$(tput setaf 127)Which storage type you would like to use? ephemeral or persistent?"
+            read -r -p "[default: ephemeral]: $(tput sgr 0)" storage_type </dev/tty
+            storage_type=${storage_type:-$default}
         done
-    fi
-else
-    install_alameda="y"
-fi
 
-if [[ "$install_alameda" == "y" ]]; then
+        if [[ "$storage_type" == "persistent" ]]; then
+            default="10"
+            read -r -p "$(tput setaf 127)Specify log storage size [ex: 10 for 10GB, default: 10]: $(tput sgr 0)" log_size </dev/tty
+            log_size=${log_size:-$default}
+            default="10"
+            read -r -p "$(tput setaf 127)Specify data storage size [ex: 10 for 10GB, default: 10]: $(tput sgr 0)" data_size </dev/tty
+            data_size=${data_size:-$default}
+
+            while [[ "$storage_class" == "" ]]
+            do
+                read -r -p "$(tput setaf 127)Specify storage class name: $(tput sgr 0)" storage_class </dev/tty
+            done
+        fi
+
+        if [ "$openshift_minor_version" = "" ]; then
+            #k8s
+            default="y"
+            read -r -p "$(tput setaf 127)Do you want to expose Grafana and Rest API services for external access? [default: y]:$(tput sgr 0)" expose_service </dev/tty
+            expose_service=${expose_service:-$default}
+        fi
+
+        echo -e "\n----------------------------------------"
+        echo "install_namespace = $install_namespace"
+        if [[ "$enable_execution" == "y" ]]; then
+            echo "enable_execution = true"
+        else
+            echo "enable_execution = false"
+        fi
+        echo "prometheus_address = $prometheus_address"
+        echo "storage_type = $storage_type"
+        if [[ "$storage_type" == "persistent" ]]; then
+            echo "log storage size = $log_size GB"
+            echo "data storage size = $data_size GB"
+            echo "storage class name = $storage_class"
+        fi
+        if [ "$openshift_minor_version" = "" ]; then
+            #k8s
+            echo "expose service = $expose_service"
+        fi
+        echo "----------------------------------------"
+
+        default="y"
+        read -r -p "$(tput setaf 2)Is the above information correct [default: y]:$(tput sgr 0)" information_correct </dev/tty
+        information_correct=${information_correct:-$default}
+    done
+fi
+     
+if [ "$need_upgrade" != "y" ]; then 
+    # First time installation case
     sed -i "s|\bnamespace:.*|namespace: ${install_namespace}|g" ${alamedaservice_example}
 
     if [[ "$enable_execution" == "y" ]]; then
@@ -645,35 +636,26 @@ __EOF__
     fi
 
     kubectl apply -f $alamedaservice_example &>/dev/null
-    if [ "$need_upgrade" = "y" ];then
-        # for upgrade - start operator after applying new alamedaservice
-        kubectl patch deployment federatorai-operator -n $install_namespace -p '{"spec":{"replicas": 1}}'
-    fi
-
-    echo "Processing..."
-    check_alameda_datahub_tag $max_wait_pods_ready_time 60 $install_namespace
-    wait_until_pods_ready $max_wait_pods_ready_time 60 $install_namespace 5
-
-    webhook_exist_checker
-    if [ "$webhook_exist" != "y" ];then
-        webhook_reminder
-    fi
-
-    get_grafana_route $install_namespace
-    get_restapi_route $install_namespace
-    echo -e "$(tput setaf 6)\nInstall Alameda $tag_number successfully$(tput sgr 0)"
-    leave_prog
-    exit 0
 else
-    if [ "$need_upgrade" = "y" ];then
-        # for upgrade - start operator after applying new alamedaservice
-        kubectl patch deployment federatorai-operator -n $install_namespace -p '{"spec":{"replicas": 1}}'
-    fi
+    # Upgrade case, patch version to alamedaservice only
+    kubectl patch alamedaservice $previous_alamedaservice -n $install_namespace --type merge --patch "{\"spec\":{\"version\": \"$tag_number\"}}"
+
+    # Start operator after patching alamedaservice
+    kubectl patch deployment federatorai-operator -n $install_namespace -p '{"spec":{"replicas": 1}}'
 fi
+
+echo "Processing..."
+check_alameda_datahub_tag $max_wait_pods_ready_time 60 $install_namespace
+wait_until_pods_ready $max_wait_pods_ready_time 60 $install_namespace 5
 
 webhook_exist_checker
 if [ "$webhook_exist" != "y" ];then
     webhook_reminder
 fi
+
+get_grafana_route $install_namespace
+get_restapi_route $install_namespace
+echo -e "$(tput setaf 6)\nInstall Alameda $tag_number successfully$(tput sgr 0)"
 leave_prog
 exit 0
+
