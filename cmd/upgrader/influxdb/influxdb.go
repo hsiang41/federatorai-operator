@@ -31,7 +31,12 @@ var (
 		Short: "upgrade influxdb schema from Kilo to Lima",
 		Long:  "",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := initK8SClient()
+			err := parseFlag()
+			if err != nil {
+				return errors.Wrap(err, "parse flag failed")
+			}
+
+			err = initK8SClient()
 			if err != nil {
 				return errors.Wrap(err, "init k8s client failed")
 			}
@@ -47,10 +52,27 @@ var (
 			"pod",
 		},
 	}
+
+	timeout        = "300s"
 	upgradeTimeout = 300 * time.Second
 
 	logger = log.Log.WithName("upgrader-influxdb")
 )
+
+func init() {
+	UpgradeInfluxDBSchemaCMD.Flags().StringVar(&timeout, "timeout", "300s", "Timeout limit to execute update process.")
+}
+
+func parseFlag() error {
+	var err error
+
+	upgradeTimeout, err = time.ParseDuration(timeout)
+	if err != nil {
+		return errors.Wrap(err, `parse flag "timeout" failed`)
+	}
+
+	return nil
+}
 
 func initK8SClient() error {
 
