@@ -277,6 +277,9 @@ spec:
 - Field: storages
   - type: [StorageSpec](#storagespec) array
   - description: This field is optional and it lists storage settings which applied to an Alameda component.
+- Field: env
+  - type: [v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#envvar-v1-core) array
+  - description: This field is optional and it lists environment settings which applied to an Alameda component.
 
 ### FederatoraiAgentGPUSpec
 

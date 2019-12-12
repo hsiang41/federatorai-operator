@@ -63,6 +63,7 @@ type AlamedaComponentSpec struct {
 	ImagePullPolicy    corev1.PullPolicy `json:"imagepullpolicy"`
 	Storages           []StorageSpec     `json:"storages"`
 	BootStrapContainer Imagestruct       `json:"bootstrap"`
+	EnvVars            []corev1.EnvVar   `json:"env"`
 }
 
 type FederatoraiAgentGPUSpec struct {
