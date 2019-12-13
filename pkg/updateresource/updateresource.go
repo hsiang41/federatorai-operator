@@ -277,6 +277,14 @@ func misMatchContainers(modify *bool, clusterContainers, sourceContainers []core
 					log.V(-1).Info("change VolumeMounts")
 					clusterContainers[clusterIndex].VolumeMounts = sourceContainer.VolumeMounts
 				}
+				if !equality.Semantic.DeepEqual(clusterContainer.ReadinessProbe, sourceContainer.ReadinessProbe) {
+					*modify = true
+					clusterContainers[clusterIndex].ReadinessProbe = sourceContainer.ReadinessProbe
+				}
+				if !equality.Semantic.DeepEqual(clusterContainer.LivenessProbe, sourceContainer.LivenessProbe) {
+					*modify = true
+					clusterContainers[clusterIndex].LivenessProbe = sourceContainer.LivenessProbe
+				}
 				for index, value := range sourceContainer.Env {
 					if value.ValueFrom != nil {
 						if value.ValueFrom.FieldRef != nil {
