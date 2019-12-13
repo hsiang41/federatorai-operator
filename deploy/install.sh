@@ -588,7 +588,10 @@ if [ "$silent_mode_disabled" = "y" ] && [ "$need_upgrade" != "y" ];then
         information_correct=${information_correct:-$default}
     done
 fi
-     
+
+grafana_node_port="31010"
+rest_api_node_port="31011"
+
 if [ "$need_upgrade" != "y" ]; then 
     # First time installation case
     sed -i "s|\bnamespace:.*|namespace: ${install_namespace}|g" ${alamedaservice_example}
@@ -614,9 +617,6 @@ if [ "$need_upgrade" != "y" ]; then
 
 __EOF__
     fi
-
-    grafana_node_port="31010"
-    rest_api_node_port="31011"
 
     if [ "$openshift_minor_version" = "" ]; then #k8s
         if [ "$expose_service" = "y" ] || [ "$expose_service" = "Y" ]; then
