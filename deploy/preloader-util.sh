@@ -268,15 +268,17 @@ run_futuremode_preloader()
 
 scale_down_pods()
 {
-    original_alameda_ai_replicas="`kubectl get deploy alameda-ai -o jsonpath='{.spec.replicas}'`"
+    echo -e "\n$(tput setaf 6)Scale down alameda-ai and alameda-ai-dispatcher ...$(tput sgr 0)"
+    original_alameda_ai_replicas="`kubectl get deploy alameda-ai -n $install_namespace -o jsonpath='{.spec.replicas}'`"
     kubectl patch deployment alameda-ai -n $install_namespace -p '{"spec":{"replicas": 0}}'
-
     kubectl patch deployment alameda-ai-dispatcher -n $install_namespace -p '{"spec":{"replicas": 0}}'
+    echo "Done"
 }
 
 scale_up_pods()
 {
-    if [ "`kubectl get deploy alameda-ai -o jsonpath='{.spec.replicas}'`" -eq "0" ]; then
+    echo -e "\n$(tput setaf 6)Scale up alameda-ai and alameda-ai-dispatcher ...$(tput sgr 0)"
+    if [ "`kubectl get deploy alameda-ai -n $install_namespace -o jsonpath='{.spec.replicas}'`" -eq "0" ]; then
         if [ "$original_alameda_ai_replicas" != "" ]; then
             kubectl patch deployment alameda-ai -n $install_namespace -p "{\"spec\":{\"replicas\": $original_alameda_ai_replicas}}"
         else
@@ -285,13 +287,14 @@ scale_up_pods()
         do_something="y"
     fi
 
-    if [ "`kubectl get deploy alameda-ai-dispatcher -o jsonpath='{.spec.replicas}'`" -eq "0" ]; then
+    if [ "`kubectl get deploy alameda-ai-dispatcher -n $install_namespace -o jsonpath='{.spec.replicas}'`" -eq "0" ]; then
         kubectl patch deployment alameda-ai-dispatcher -n $install_namespace -p '{"spec":{"replicas": 1}}'
         do_something="y"
     fi
     if [ "$do_something" = "y" ]; then
         wait_until_pods_ready 600 30 $install_namespace 5
     fi
+    echo "Done"
 }
 
 reschedule_dispatcher()
@@ -844,7 +847,6 @@ if [ "$run_preloader" = "y" ]; then
     run_preloader_command
     verify_metrics_exist
     scale_up_pods
-    reschedule_dispatcher
     #check_prediction_status
 fi
 
