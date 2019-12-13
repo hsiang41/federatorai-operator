@@ -38,10 +38,13 @@ pods_ready()
   namespace="$1"
 
   kubectl get pod -n $namespace \
-    -o=jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\t"}{.status.phase}{"\n"}{end}' \
-      | while read name status phase _junk; do
+    -o=jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\t"}{.status.phase}{"\t"}{.status.reason}{"\n"}{end}' \
+      | while read name status phase reason _junk; do
           if [ "$status" != "True" ]; then
-            echo "Waiting pod $name in namespace $namespace to be ready. Current phase: $phase"
+            msg="Waiting pod $name in namespace $namespace to be ready."
+            [ "$phase" != "" ] && msg="$msg phase: [$phase]"
+            [ "$reason" != "" ] && msg="$msg reason: [$reason]"
+            echo "$msg"
             return 1
           fi
         done || return 1

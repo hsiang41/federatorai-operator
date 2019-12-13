@@ -66,13 +66,22 @@ check_version()
     oc version 2>/dev/null|grep "oc v"|grep -q " v[4-9]"
     if [ "$?" = "0" ];then
         # oc version is 4-9, passed
+        openshift_minor_version="12"
+        return 0
+    fi
+
+    # OpenShift Container Platform 4.x
+    oc version 2>/dev/null|grep -q "Server Version: 4"
+    if [ "$?" = "0" ];then
+        # oc server version is 4, passed
+        openshift_minor_version="12"
         return 0
     fi
 
     oc version 2>/dev/null|grep "oc v"|grep -q " v[0-2]"
     if [ "$?" = "0" ];then
         # oc version is 0-2, failed
-        echo -e "\n$(tput setaf 1)Error! OpenShift version less than 3.$openshift_required_minor_version is not supported by Federator.ai$(tput sgr 0)"
+        echo -e "\n$(tput setaf 10)Error! OpenShift version less than 3.$openshift_required_minor_version is not supported by Federator.ai$(tput sgr 0)"
         exit 5
     fi
 
@@ -82,11 +91,14 @@ check_version()
     k8s_version=`kubectl version 2>/dev/null|grep Server|grep -o "Minor:\"[0-9]*\""|cut -d '"' -f2`
 
     if [ "$openshift_minor_version" != "" ] && [ "$openshift_minor_version" -lt "$openshift_required_minor_version" ]; then
-        echo -e "\n$(tput setaf 1)Error! OpenShift version less than 3.$openshift_required_minor_version is not supported by Federator.ai$(tput sgr 0)"
+        echo -e "\n$(tput setaf 10)Error! OpenShift version less than 3.$openshift_required_minor_version is not supported by Federator.ai$(tput sgr 0)"
         exit 5
     elif [ "$openshift_minor_version" = "" ] && [ "$k8s_version" != "" ] && [ "$k8s_version" -lt "$k8s_required_version" ]; then
-        echo -e "\n$(tput setaf 1)Error! Kubernetes version less than 1.$k8s_required_version is not supported by Federator.ai$(tput sgr 0)"
+        echo -e "\n$(tput setaf 10)Error! Kubernetes version less than 1.$k8s_required_version is not supported by Federator.ai$(tput sgr 0)"
         exit 6
+    elif [ "$openshift_minor_version" = "" ] && [ "$k8s_version" = "" ]; then
+        echo -e "\n$(tput setaf 10)Error! Can't get Kubernetes or OpenShift version$(tput sgr 0)"
+        exit 5
     fi
 }
 

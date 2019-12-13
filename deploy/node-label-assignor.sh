@@ -14,6 +14,15 @@ check_version()
     oc version 2>/dev/null|grep "oc v"|grep -q " v[4-9]"
     if [ "$?" = "0" ];then
         # oc version is 4-9, passed
+        openshift_minor_version="12"
+        return 0
+    fi
+
+    # OpenShift Container Platform 4.x
+    oc version 2>/dev/null|grep -q "Server Version: 4"
+    if [ "$?" = "0" ];then
+        # oc server version is 4, passed
+        openshift_minor_version="12"
         return 0
     fi
 
