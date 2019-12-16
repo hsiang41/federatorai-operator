@@ -213,12 +213,14 @@ rules:
   - watch
 - apiGroups:
   - extensions
+  - policy
   resources:
   - podsecuritypolicies
   verbs:
   - "*"
 - apiGroups:
   - extensions
+  - policy
   resourceNames:
   - federatorai-alameda-weave-scope
   resources:

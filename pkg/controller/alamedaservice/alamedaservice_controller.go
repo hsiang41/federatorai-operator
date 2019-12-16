@@ -26,13 +26,14 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	ingressv1beta1 "k8s.io/api/extensions/v1beta1"
-	v1beta1 "k8s.io/api/extensions/v1beta1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextension "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
@@ -77,6 +78,20 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		panic(err)
 	}
 
+	var podSecurityPolicesApiGroupVersion schema.GroupVersion
+	hasPSPInExtensionV1beta1, err := util.ServerHasResourceInAPIGroupVersion("podsecuritypolicies", extensionsv1beta1.SchemeGroupVersion.String())
+	if err != nil {
+		panic(err)
+	} else if hasPSPInExtensionV1beta1 {
+		podSecurityPolicesApiGroupVersion = extensionsv1beta1.SchemeGroupVersion
+	}
+	hasPSPInPolicyV1beta1, err := util.ServerHasResourceInAPIGroupVersion("podsecuritypolicies", policyv1beta1.SchemeGroupVersion.String())
+	if err != nil {
+		panic(err)
+	} else if hasPSPInPolicyV1beta1 {
+		podSecurityPolicesApiGroupVersion = policyv1beta1.SchemeGroupVersion
+	}
+
 	return &ReconcileAlamedaService{
 		client:                      mgr.GetClient(),
 		scheme:                      mgr.GetScheme(),
@@ -84,6 +99,8 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		kubeClient:                  kubeClient,
 		isOpenshiftAPIRouteExist:    hasOpenshiftAPIRoute,
 		isOpenshiftAPISecurityExist: hasOpenshiftAPISecurity,
+
+		podSecurityPolicesApiGroupVersion: podSecurityPolicesApiGroupVersion,
 	}
 }
 
@@ -137,6 +154,8 @@ type ReconcileAlamedaService struct {
 
 	isOpenshiftAPIRouteExist    bool
 	isOpenshiftAPISecurityExist bool
+
+	podSecurityPolicesApiGroupVersion schema.GroupVersion
 }
 
 // Reconcile reads that state of the cluster for a AlamedaService object and makes changes based on the state read
@@ -450,7 +469,11 @@ func (r *ReconcileAlamedaService) getNamespace(namespaceName string) (corev1.Nam
 
 func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace, alamedaService federatoraiv1alpha1.AlamedaService) *component.ComponentConfig {
 	podTemplateConfig := component.NewDefaultPodTemplateConfig(namespace)
-	componentConfg := component.NewComponentConfig(namespace.Name, podTemplateConfig, alamedaService)
+	componentConfg := component.NewComponentConfig(podTemplateConfig, alamedaService,
+		component.WithNamespace(namespace.Name),
+		component.WithPodSecurityPolicyGroup(r.podSecurityPolicesApiGroupVersion.Group),
+		component.WithPodSecurityPolicyVersion(r.podSecurityPolicesApiGroupVersion.Version),
+	)
 	return componentConfg
 }
 
@@ -563,29 +586,52 @@ func (r *ReconcileAlamedaService) createAlamedaNotificationTopics(owner metav1.O
 
 func (r *ReconcileAlamedaService) syncPodSecurityPolicy(instance *federatoraiv1alpha1.AlamedaService,
 	gcIns *rbacv1.ClusterRole, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
+
+	var psp runtime.Object
+	switch r.podSecurityPolicesApiGroupVersion {
+	case policyv1beta1.SchemeGroupVersion:
+		psp = &policyv1beta1.PodSecurityPolicy{}
+	case extensionsv1beta1.SchemeGroupVersion:
+		psp = &extensionsv1beta1.PodSecurityPolicy{}
+	default:
+		return errors.Errorf(`not supported apiGroup "%s" for Kind:"PodSecurityPolicy"`, r.podSecurityPolicesApiGroupVersion)
+	}
+
 	for _, FileStr := range resource.PodSecurityPolicyList {
-		resourcePSP := componentConfig.NewPodSecurityPolicy(FileStr)
-		if err := controllerutil.SetControllerReference(gcIns, resourcePSP, r.scheme); err != nil {
-			return errors.Errorf("Fail resourcePSP SetControllerReference: %s", err.Error())
+		var resourceMeta metav1.Object
+		resourcePSP, err := componentConfig.NewPodSecurityPolicy(FileStr)
+		switch v := resourcePSP.(type) {
+		case *policyv1beta1.PodSecurityPolicy:
+			resourceMeta = v
+			if err := controllerutil.SetControllerReference(gcIns, v, r.scheme); err != nil {
+				return errors.Errorf("Fail resourcePSP SetControllerReference: %s", err.Error())
+			}
+		case *extensionsv1beta1.PodSecurityPolicy:
+			resourceMeta = v
+			if err := controllerutil.SetControllerReference(gcIns, v, r.scheme); err != nil {
+				return errors.Errorf("Fail resourcePSP SetControllerReference: %s", err.Error())
+			}
+		default:
+			return errors.Errorf(`not supported type "%T" for Kind:"PodSecurityPolicy"`, resourcePSP)
 		}
-		foundPSP := &v1beta1.PodSecurityPolicy{}
-		err := r.client.Get(context.TODO(), types.NamespacedName{Name: resourcePSP.Name}, foundPSP)
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: resourceMeta.GetName()}, psp)
 		if err != nil && k8sErrors.IsNotFound(err) {
-			log.Info("Creating a new Resource PodSecurityPolicy... ", "resourcePSP.Name", resourcePSP.Name)
+			log.Info("Creating a new Resource PodSecurityPolicy... ", "resourcePSP.Name", resourceMeta.GetName())
 			err = r.client.Create(context.TODO(), resourcePSP)
 			if err != nil {
-				return errors.Errorf("create PodSecurityPolicy %s/%s failed: %s", resourcePSP.Namespace, resourcePSP.Name, err.Error())
+				return errors.Errorf("create PodSecurityPolicy %s/%s failed: %s", resourceMeta.GetNamespace(), resourceMeta.GetName(), err.Error())
 			}
-			log.Info("Successfully Creating Resource PodSecurityPolicy", "resourcePSP.Name", resourcePSP.Name)
+			log.Info("Successfully Creating Resource PodSecurityPolicy", "resourcePSP.Name", resourceMeta.GetName())
 		} else if err != nil {
-			return errors.Errorf("get PodSecurityPolicy %s/%s failed: %s", resourcePSP.Namespace, resourcePSP.Name, err.Error())
+			return errors.Errorf("get PodSecurityPolicy %s/%s failed: %s", resourceMeta.GetNamespace(), resourceMeta.GetName(), err.Error())
 		} else {
 			err = r.client.Update(context.TODO(), resourcePSP)
 			if err != nil {
-				return errors.Errorf("Update PodSecurityPolicy %s/%s failed: %s", resourcePSP.Namespace, resourcePSP.Name, err.Error())
+				return errors.Errorf("Update PodSecurityPolicy %s/%s failed: %s", resourceMeta.GetNamespace(), resourceMeta.GetName(), err.Error())
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -1226,7 +1272,7 @@ func (r *ReconcileAlamedaService) syncIngress(instance *federatoraiv1alpha1.Alam
 		if err := controllerutil.SetControllerReference(instance, resourceIG, r.scheme); err != nil {
 			return errors.Errorf("Fail resourceIG SetControllerReference: %s", err.Error())
 		}
-		foundIG := &ingressv1beta1.Ingress{}
+		foundIG := &extensionsv1beta1.Ingress{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: resourceIG.Name, Namespace: resourceIG.Namespace}, foundIG)
 		if err != nil && k8sErrors.IsNotFound(err) {
 			log.Info("Creating a new Resource Route... ", "resourceIG.Name", resourceIG.Name)
@@ -1510,19 +1556,21 @@ func (r *ReconcileAlamedaService) uninstallDaemonSet(instance *federatoraiv1alph
 
 func (r *ReconcileAlamedaService) uninstallPodSecurityPolicy(instance *federatoraiv1alpha1.AlamedaService, resource *alamedaserviceparamter.Resource) error {
 	for _, fileString := range resource.PodSecurityPolicyList {
-		resourcePodSecurityPolicy := componentConfig.NewPodSecurityPolicy(fileString)
-		foundPodSecurityPolicy := &v1beta1.PodSecurityPolicy{}
-		err := r.client.Get(context.TODO(), types.NamespacedName{Name: resourcePodSecurityPolicy.Name, Namespace: resourcePodSecurityPolicy.Namespace}, foundPodSecurityPolicy)
+		psp, err := componentConfig.NewPodSecurityPolicy(fileString)
+		if err != nil {
+			return err
+		}
+		err = r.client.Delete(context.TODO(), psp)
 		if err != nil && k8sErrors.IsNotFound(err) {
-			continue
+			return nil
 		} else if err != nil {
-			return errors.Errorf("get PodSecurityPolicy %s/%s failed: %s", resourcePodSecurityPolicy.Namespace, resourcePodSecurityPolicy.Name, err.Error())
-		} else {
-			err := r.client.Delete(context.TODO(), resourcePodSecurityPolicy)
-			if err != nil && k8sErrors.IsNotFound(err) {
-				return nil
-			} else if err != nil {
-				return errors.Errorf("delete PodSecurityPolicy %s/%s failed: %s", resourcePodSecurityPolicy.Namespace, resourcePodSecurityPolicy.Name, err.Error())
+			switch psp := psp.(type) {
+			case (*policyv1beta1.PodSecurityPolicy):
+				return errors.Errorf("delete PodSecurityPolicy %s/%s failed: %s", psp.GetNamespace(), psp.GetName(), err.Error())
+			case (*extensionsv1beta1.PodSecurityPolicy):
+				return errors.Errorf("delete PodSecurityPolicy %s/%s failed: %s", psp.GetNamespace(), psp.GetName(), err.Error())
+			default:
+				return errors.Errorf(`not supported type %T`, psp)
 			}
 		}
 	}

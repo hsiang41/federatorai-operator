@@ -30,11 +30,12 @@ import (
 	admissionregistration_v1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	ingressv1beta1 "k8s.io/api/extensions/v1beta1"
-	v1beta1 "k8s.io/api/extensions/v1beta1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	unstructuredv1 "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/cert"
 	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -42,18 +43,51 @@ import (
 
 var log = logf.Log.WithName("controller_alamedaservice")
 
+type ComponentConfigOption func(*ComponentConfig)
+
+func WithNamespace(namespace string) ComponentConfigOption {
+	return func(cc *ComponentConfig) {
+		cc.NameSpace = namespace
+	}
+}
+func WithPodSecurityPolicyGroup(podSecurityPolicyGroup string) ComponentConfigOption {
+	return func(cc *ComponentConfig) {
+		cc.PodSecurityPolicyGroup = podSecurityPolicyGroup
+	}
+}
+func WithPodSecurityPolicyVersion(podSecurityPolicyVersion string) ComponentConfigOption {
+	return func(cc *ComponentConfig) {
+		cc.PodSecurityPolicyVersion = podSecurityPolicyVersion
+	}
+}
+
 type ComponentConfig struct {
-	NameSpace           string
+	NameSpace                string
+	PodSecurityPolicyGroup   string
+	PodSecurityPolicyVersion string
+
 	PodTemplateConfig   PodTemplateConfig
 	FederatoraiAgentGPU FederatoraiAgentGPUConfig
 }
 
-func NewComponentConfig(namespace string, ptc PodTemplateConfig, alamedaService federatoraiv1alpha1.AlamedaService) *ComponentConfig {
+func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha1.AlamedaService, opts ...ComponentConfigOption) *ComponentConfig {
+
+	var (
+		defaultNamespace                = ""
+		defaultPodSecurityPolicyGroup   = policyv1beta1.SchemeGroupVersion.Group
+		defaultPodSecurityPolicyVersion = policyv1beta1.SchemeGroupVersion.Version
+	)
 
 	c := ComponentConfig{
-		NameSpace:           namespace,
-		PodTemplateConfig:   ptc,
-		FederatoraiAgentGPU: NewDefaultFederatoraiAgentGPUConfig(),
+		NameSpace:                defaultNamespace,
+		PodSecurityPolicyGroup:   defaultPodSecurityPolicyGroup,
+		PodSecurityPolicyVersion: defaultPodSecurityPolicyVersion,
+		PodTemplateConfig:        ptc,
+		FederatoraiAgentGPU:      NewDefaultFederatoraiAgentGPUConfig(),
+	}
+
+	for _, opt := range opts {
+		opt(&c)
 	}
 
 	faiAgentGPUSectionSet := alamedaService.Spec.FederatoraiAgentGPUSectionSet
@@ -141,13 +175,25 @@ func (c ComponentConfig) NewRole(str string) *rbacv1.Role {
 	return cr
 }
 
-func (c ComponentConfig) NewPodSecurityPolicy(str string) *v1beta1.PodSecurityPolicy {
+func (c ComponentConfig) NewPodSecurityPolicy(str string) (runtime.Object, error) {
 	pspByte, err := assets.Asset(str)
 	if err != nil {
 		log.Error(err, "Failed to Test create PodSecurityPolicy")
 	}
-	psp := resourceread.ReadPodSecurityPolicyV1beta1(c.templateAssets(string(pspByte[:])))
-	return psp
+	var psp runtime.Object
+	switch c.PodSecurityPolicyGroup {
+	case policyv1beta1.SchemeGroupVersion.Group:
+		policyV1beta1PodSecurityPolicy, err := resourceread.ReadPolicyV1beta1PodSecurityPolicy(c.templateAssets(string(pspByte[:])))
+		if err != nil {
+			return nil, err
+		}
+		psp = &policyV1beta1PodSecurityPolicy
+	case extensionsv1beta1.SchemeGroupVersion.Group:
+		psp = resourceread.ReadPodSecurityPolicyV1beta1(c.templateAssets(string(pspByte[:])))
+	default:
+		return nil, errors.Errorf(`not supported group "%s"`, c.PodSecurityPolicyGroup)
+	}
+	return psp, nil
 }
 
 func (c ComponentConfig) NewAlamedaNotificationChannel(str string) (*unstructuredv1.Unstructured, error) {
@@ -271,7 +317,7 @@ func (c ComponentConfig) NewRoute(str string) *routev1.Route {
 	return rt
 }
 
-func (c ComponentConfig) NewIngress(str string) *ingressv1beta1.Ingress {
+func (c ComponentConfig) NewIngress(str string) *extensionsv1beta1.Ingress {
 	igByte, err := assets.Asset(str)
 	if err != nil {
 		log.Error(err, "Failed to Test create ingress")

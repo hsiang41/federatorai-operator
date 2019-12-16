@@ -17,7 +17,7 @@ type resourceFactory struct {
 
 func newResourceFactoryByAlamedaService(alamedaService federatoraiv1alpha1.AlamedaService) (resourceFactory, error) {
 
-	c := component.NewComponentConfig(alamedaService.GetNamespace(), component.PodTemplateConfig{}, alamedaService)
+	c := component.NewComponentConfig(component.PodTemplateConfig{}, alamedaService, component.WithNamespace(alamedaService.GetNamespace()))
 
 	asp := alamedaserviceparamter.NewAlamedaServiceParamter(&alamedaService)
 

@@ -112,8 +112,8 @@ const (
 	AlamedaInfluxDBAdminUserEnvName     = "INFLUXDB_ADMIN_USER"
 	AlamedaInfluxDBAdminPasswordEnvName = "INFLUXDB_ADMIN_PASSWORD"
 	AlamedaInfluxDBHTTPSEnabledEnvName  = "INFLUXDB_HTTP_HTTPS_ENABLED"
-	
-	AlamedaInfluxDBAPIPort              = 8086
+
+	AlamedaInfluxDBAPIPort = 8086
 )
 
 var (
@@ -578,6 +578,25 @@ func ServerHasAPIGroup(apiGroupName string) (bool, error) {
 	}
 	for _, apiGroup := range apiGroups.Groups {
 		if apiGroup.Name == apiGroupName {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func ServerHasResourceInAPIGroupVersion(resourceName, apiGroupVersion string) (bool, error) {
+
+	config, err := config.GetConfig()
+	k8sClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return false, err
+	}
+	resourceList, err := k8sClient.ServerResourcesForGroupVersion(apiGroupVersion)
+	if err != nil {
+		return false, err
+	}
+	for _, resource := range resourceList.APIResources {
+		if resource.Name == resourceName {
 			return true, nil
 		}
 	}
