@@ -327,9 +327,9 @@ patch_datahub_for_preloader()
 {
     start=`date +%s`
     echo -e "\n$(tput setaf 6)Starting patch datahub for preloader...$(tput sgr 0)"
-    kubectl get deployment/alameda-datahub -n $install_namespace -o yaml|grep ALAMEDA_DATAHUB_APIS_METRICS_SOURCE -A1|grep -q influxdb
+    kubectl get alamedaservice $alamedaservice_name -n $install_namespace -o yaml|grep "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE" -A1|grep -q influxdb
     if [ "$?" != "0" ]; then
-        kubectl set env deployment/alameda-datahub -n $install_namespace ALAMEDA_DATAHUB_APIS_METRICS_SOURCE=influxdb
+        kubectl patch alamedaservice $alamedaservice_name -n $install_namespace --type merge --patch '{"spec":{"alamedaDatahub":{"env":[{"name": "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE","value": "influxdb"}]}}}'
         if [ "$?" != "0" ]; then
             echo -e "\n$(tput setaf 1)Error in patching datahub pod.$(tput sgr 0)"
             leave_prog
@@ -348,9 +348,9 @@ patch_datahub_back_to_normal()
 {
     start=`date +%s`
     echo -e "\n$(tput setaf 6)Starting roll back datahub...$(tput sgr 0)"
-    kubectl get deployment/alameda-datahub -n $install_namespace -o yaml|grep ALAMEDA_DATAHUB_APIS_METRICS_SOURCE -A1|grep -q prometheus
+    kubectl get alamedaservice $alamedaservice_name -n $install_namespace -o yaml|grep "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE" -A1|grep -q prometheus
     if [ "$?" != "0" ]; then
-        kubectl set env deployment/alameda-datahub -n $install_namespace ALAMEDA_DATAHUB_APIS_METRICS_SOURCE=prometheus
+        kubectl patch alamedaservice $alamedaservice_name -n $install_namespace --type merge --patch '{"spec":{"alamedaDatahub":{"env":[{"name": "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE","value": "prometheus"}]}}}'
         if [ "$?" != "0" ]; then
             echo -e "\n$(tput setaf 1)Error in rolling back datahub pod.$(tput sgr 0)"
             leave_prog
@@ -678,12 +678,6 @@ enable_preloader_in_alamedaservice()
         fi
     else
         echo -e "\n$(tput setaf 6)Enable preloader in alamedaservice...$(tput sgr 0)"
-        alamedaservice_name="`kubectl get alamedaservice -n $install_namespace -o jsonpath='{range .items[*]}{.metadata.name}'`"
-        if [ "$alamedaservice_name" = "" ]; then
-            echo -e "\n$(tput setaf 1)Error! Failed to get alamedaservice name.$(tput sgr 0)"
-            leave_prog
-            exit 8
-        fi
         kubectl patch alamedaservice $alamedaservice_name -n $install_namespace --type merge --patch '{"spec":{"enablePreloader": true}}'
         if [ "$?" != "0" ]; then
             echo -e "\n$(tput setaf 1)Error in patching alamedaservice $alamedaservice_name.$(tput sgr 0)"
@@ -711,12 +705,6 @@ disable_preloader_in_alamedaservice()
     echo -e "\n$(tput setaf 6)Disable preloader in alamedaservice...$(tput sgr 0)"
     get_current_preloader_name
     if [ "$current_preloader_pod_name" != "" ]; then
-        alamedaservice_name="`kubectl get alamedaservice -n $install_namespace -o jsonpath='{range .items[*]}{.metadata.name}'`"
-        if [ "$alamedaservice_name" = "" ]; then
-            echo -e "\n$(tput setaf 1)Error! Failed to get alamedaservice name.$(tput sgr 0)"
-            leave_prog
-            exit 8
-        fi
         kubectl patch alamedaservice $alamedaservice_name -n $install_namespace  --type merge --patch '{"spec":{"enablePreloader": false}}'
         if [ "$?" != "0" ]; then
             echo -e "\n$(tput setaf 1)Error in patching alamedaservice $alamedaservice_name.$(tput sgr 0)"
@@ -811,6 +799,13 @@ if [ "$install_namespace" = "" ];then
     exit 3
 fi
 
+alamedaservice_name="`kubectl get alamedaservice -n $install_namespace -o jsonpath='{range .items[*]}{.metadata.name}'`"
+if [ "$alamedaservice_name" = "" ]; then
+    echo -e "\n$(tput setaf 1)Error! Failed to get alamedaservice name.$(tput sgr 0)"
+    leave_prog
+    exit 8
+fi
+
 file_folder="/tmp/preloader"
 nginx_ns="nginx-preloader-sample"
 debug_log="debug.log"
@@ -839,10 +834,6 @@ if [ "$enable_preloader" = "y" ]; then
 fi
 
 if [ "$run_preloader" = "y" ]; then
-    # Enable preloader will reset the datahub env. Need to set env for datahub again.
-    patch_datahub_for_preloader
-    # clean up again
-    clean_environment_operations
     scale_down_pods
     run_preloader_command
     verify_metrics_exist
@@ -851,8 +842,6 @@ if [ "$run_preloader" = "y" ]; then
 fi
 
 if [ "$future_mode_enabled" = "y" ]; then
-    # Enable preloader will reset the datahub env. Need to set env for datahub again.
-    patch_datahub_for_preloader
     run_futuremode_preloader
     verify_metrics_exist
 fi
