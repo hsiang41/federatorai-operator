@@ -167,7 +167,7 @@ do
 
     read -r -p "$(tput setaf 2)Please input SMTP server:$(tput sgr 0) " channel_server </dev/tty
     read -r -p "$(tput setaf 2)Please input SMTP port:$(tput sgr 0) " channel_port </dev/tty
-    read -r -p "$(tput setaf 2)Please input Encryption protocol (ex: ssl,tls,starttls):$(tput sgr 0) " channel_encryption </dev/tty
+    read -r -p "$(tput setaf 2)Please input Encryption protocol (e.g., ssl,tls,starttls):$(tput sgr 0) " channel_encryption </dev/tty
     read -r -p "$(tput setaf 2)Please input Login username:$(tput sgr 0) " channel_username </dev/tty
     read -rs -p "$(tput setaf 2)Please input Login password:$(tput sgr 0) " channel_password </dev/tty
     echo ""

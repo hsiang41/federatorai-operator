@@ -13,14 +13,14 @@ show_usage()
 
     Usage:
         Requirements:
-            --namespace <space> target namespace name [ex: --namespace nginx]
+            --namespace <space> target namespace name [e.g., --namespace nginx]
             # we currently support Deployment name, Deployment Configuration name, or StatefulSet name.
-            --pod-name <space> target pod name [ex: --pod-name nginx-stable-1-lvr4d]
+            --pod-name <space> target pod name [e.g., --pod-name nginx-stable-1-lvr4d]
         Operations:
             --get-current-pod-resources
             --get-pod-planning
             --generate-patch
-            --apply-patch <space> patch file full path [ex: --apply-patch /tmp/planning-util/patch.yml]
+            --apply-patch <space> patch file full path [e.g., --apply-patch /tmp/planning-util/patch.yml]
 
 __EOF__
     exit 1
@@ -299,12 +299,12 @@ get_controller_info()
 {
     start=`date +%s`
     echo -e "\n$(tput setaf 6)Get pod controller type and name...$(tput sgr 0)"
-    owner_kind="pod"
-    owner_name="$target_pod_name"
+    owner_reference_kind="pod"
+    owner_reference_name="$target_pod_name"
     fist_run="y"
     while true
     do
-        owner_ref=$(get_owner_reference $owner_kind $owner_name)
+        owner_ref=$(get_owner_reference $owner_reference_kind $owner_reference_name)
         if [ "$fist_run" = "y" ] && [ "$owner_ref" = "" ]; then
             # Pod # First run
             echo -e "\n$(tput setaf 1)Error! Can't find pod ($target_pod_name) ownerReferences in namespace $target_namespace$(tput sgr 0)"
@@ -313,9 +313,9 @@ get_controller_info()
         fi
         fist_run="n"
         if [ "$owner_ref" != "" ]; then
-            owner_kind="`echo $owner_ref |grep 'true'|awk '{print $2}'`"
-            owner_name="`echo $owner_ref |grep 'true'|awk '{print $3}'`"
-            if [ "$owner_kind" = "DeploymentConfig" ] || [ "$owner_kind" = "Deployment" ] || [ "$owner_kind" = "StatefulSet" ]; then
+            owner_reference_kind="`echo $owner_ref |grep 'true'|awk '{print $2}'`"
+            owner_reference_name="`echo $owner_ref |grep 'true'|awk '{print $3}'`"
+            if [ "$owner_reference_kind" = "DeploymentConfig" ] || [ "$owner_reference_kind" = "Deployment" ] || [ "$owner_reference_kind" = "StatefulSet" ]; then
                 break
             fi
         else
@@ -325,10 +325,10 @@ get_controller_info()
 
     echo "target_namespace = $target_namespace"
     echo "target_pod_name = $target_pod_name"
-    echo "owner_reference_kind = $owner_kind"
-    echo "owner_reference_name = $owner_name"
+    echo "owner_reference_kind = $owner_reference_kind"
+    echo "owner_reference_name = $owner_reference_name"
 
-    if [ "$owner_kind" != "DeploymentConfig" ] && [ "$owner_kind" != "Deployment" ] && [ "$owner_kind" != "StatefulSet" ]; then
+    if [ "$owner_reference_kind" != "DeploymentConfig" ] && [ "$owner_reference_kind" != "Deployment" ] && [ "$owner_reference_kind" != "StatefulSet" ]; then
         echo -e "\n$(tput setaf 1)Error! Only support DeploymentConfig, Deployment, or StatefulSet for now.$(tput sgr 0)"
         leave_prog
         exit 8
@@ -338,6 +338,91 @@ get_controller_info()
     end=`date +%s`
     duration=$((end-start))
     echo "Duration get_controller_info = $duration" >> $debug_log
+}
+
+check_support_controller()
+{
+    start=`date +%s`
+    echo -e "\n$(tput setaf 6)Checking if controller supported...$(tput sgr 0)"
+    if [ "$openshift_minor_version" != "" ]; then
+        # OpenShift
+        if [ "$target_namespace" != "nginx-preloader-sample" ] || [ "$owner_reference_name" != "nginx-stable" ] || [ "$owner_reference_kind" != "DeploymentConfig" ]; then
+            echo -e "\n$(tput setaf 1)Error! We only support internal nginx pod for now.$(tput sgr 0)"
+        fi
+    else
+        # K8S
+        if [ "$target_namespace" != "nginx-preloader-sample" ] || [ "$owner_reference_name" != "nginx-deployment" ] || [ "$owner_reference_kind" != "Deployment" ]; then
+            echo -e "\n$(tput setaf 1)Error! We only support internal nginx pod for now.$(tput sgr 0)"
+        fi
+    fi
+    echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration check_support_controller = $duration" >> $debug_log
+}
+
+generate_controller_patch()
+{
+    start=`date +%s`
+    echo -e "\n$(tput setaf 6)Get current pod resource settings...$(tput sgr 0)"
+
+    if [ "$limits_cpu" = "" ] || [ "$requests_cpu" = "" ] || [ "$limits_memory" = "" ] || [ "$requests_memory" = "" ]; then
+        msg="Error! planning values ("
+        [ "$limits_cpu" = "" ] && msg="$msg limits_cpu"
+        [ "$requests_cpu" = "" ] && msg="$msg requests_cpu"
+        [ "$limits_memory" = "" ] && msg="$msg limits_memory"
+        [ "$requests_memory" = "" ] && msg="$msg requests_memory"
+        msg="$msg ) are empty. Make sure you run --get-pod-planning beforehand."
+        echo -e "\n$(tput setaf 1)$msg$(tput sgr 0)"
+        leave_prog
+        exit 8
+    fi
+
+    check_support_controller
+
+    cat > ${patch_yaml} << __EOF__
+spec:
+  template:
+    spec:
+      containers:
+        resources:
+          requests:
+            cpu: ${requests_cpu}m
+            memory: ${requests_memory}
+          limits:
+            cpu: ${limits_cpu}m
+            memory: ${limits_memory}
+__EOF__
+
+    echo "Patch file \"${patch_yaml}\" is generated under $file_folder"
+    echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration generate_controller_patch = $duration" >> $debug_log
+}
+
+apply_controller_patch()
+{
+    start=`date +%s`
+    echo -e "\n$(tput setaf 6)Applying controller patch...$(tput sgr 0)"
+
+    if [ ! -f "$patch_path" ]; then
+        echo -e "\n$(tput setaf 1)Error! Patch file doesn't exist. Need to run --generate-patch function first.$(tput sgr 0)"
+        leave_prog
+        exit 8
+    fi
+
+    kubectl patch $owner_reference_kind $owner_reference_name -n $target_namespace --type merge --patch "$(cat $patch_yaml)"
+    if [ "$?" != "0" ]; then
+        echo -e "\n$(tput setaf 1)Error in patching $owner_reference_kind $owner_reference_name in namespace $target_namespace.$(tput sgr 0)"
+        leave_prog
+        exit 8
+    fi
+    wait_until_pods_ready 600 20 $target_namespace 1
+    echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration apply_controller_patch = $duration" >> $debug_log
 }
 
 display_pod_resources()
@@ -463,14 +548,16 @@ if [ "$install_namespace" = "" ];then
     exit 3
 fi
 
-file_folder="/tmp/recommendation_retriever"
+file_folder="/tmp/planning-util"
 debug_log="debug.log"
+patch_yaml="nginx_patch.yaml"
 
-rm -rf $file_folder
+# To reserve patch file
+#rm -rf $file_folder
 mkdir -p $file_folder
 current_location=`pwd`
 cd $file_folder
-echo "Receiving command '$0 $@'" >> $debug_log
+echo "Receiving command '$0 $@'" > $debug_log
 
 get_needed_info
 
@@ -483,13 +570,13 @@ if [ "$get_pod_planning" = "y" ];then
 fi
 
 if [ "$generate_patch" = "y" ];then
-    echo ""
+    generate_controller_patch
 fi
 
 if [ "$apply_patch" = "y" ];then
-    echo ""
+    apply_controller_patch
+    display_pod_resources
 fi
-
 
 leave_prog
 exit 0

@@ -567,10 +567,10 @@ if [[ "$install_alameda" == "y" ]]; then
 
         if [[ "$storage_type" == "persistent" ]]; then
             default="10"
-            read -r -p "$(tput setaf 127)Specify log storage size [ex: 10 for 10GB, default: 10]: $(tput sgr 0)" log_size </dev/tty
+            read -r -p "$(tput setaf 127)Specify log storage size [e.g., 10 for 10GB, default: 10]: $(tput sgr 0)" log_size </dev/tty
             log_size=${log_size:-$default}
             default="10"
-            read -r -p "$(tput setaf 127)Specify data storage size [ex: 10 for 10GB, default: 10]: $(tput sgr 0)" data_size </dev/tty
+            read -r -p "$(tput setaf 127)Specify data storage size [e.g., 10 for 10GB, default: 10]: $(tput sgr 0)" data_size </dev/tty
             data_size=${data_size:-$default}
 
             while [[ "$storage_class" == "" ]]
