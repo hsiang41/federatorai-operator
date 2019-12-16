@@ -371,6 +371,7 @@ type AlamedaServiceParamter struct {
 }
 
 func NewAlamedaServiceParamter(instance *v1alpha1.AlamedaService) *AlamedaServiceParamter {
+	instance.SetDefaultValue()
 	asp := &AlamedaServiceParamter{
 		NameSpace:                           instance.Namespace,
 		SelfDriving:                         instance.Spec.SelfDriving,

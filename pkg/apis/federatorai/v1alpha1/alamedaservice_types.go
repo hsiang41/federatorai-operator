@@ -229,6 +229,19 @@ type AlamedaService struct {
 	Status AlamedaServiceStatus `json:"status,omitempty"`
 }
 
+// SetDefaultValue sets default value into AlamedaServie
+func (as *AlamedaService) SetDefaultValue() {
+
+	if as == nil {
+		as = &AlamedaService{}
+	}
+
+	if as.Spec.EnableDispatcher == nil {
+		enableDispatcher := true
+		as.Spec.EnableDispatcher = &enableDispatcher
+	}
+}
+
 // IsCodeNumberEmpty returns true if keycode is empty
 func (as *AlamedaService) IsCodeNumberEmpty() bool {
 
