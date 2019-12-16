@@ -158,13 +158,13 @@ wait_until_data_pump_finish()
         echo "Waiting for data pump (future mode) to finish ..."
         kubectl logs -n $install_namespace $current_preloader_pod_name | grep -q "Completed to loader container future metrics data"
         if [ "$?" = "0" ]; then
-            echo -e "\n$(tput setaf 6)Data pump (future mode) is finish.$(tput sgr 0)"
+            echo -e "\n$(tput setaf 6)Data pump (future mode) is finished.$(tput sgr 0)"
             return 0
         fi
     else #historical mode
         echo "Waiting for data pump to finish ..."
         if [[ "`kubectl logs -n $install_namespace $current_preloader_pod_name | egrep "Succeed to generate pods historical metrics|Succeed to generate nodes historical metrics" | wc -l`" -gt "1" ]]; then
-            echo -e "\n$(tput setaf 6)Data pump is finish.$(tput sgr 0)"
+            echo -e "\n$(tput setaf 6)Data pump is finished.$(tput sgr 0)"
             return 0
         fi
     fi
@@ -210,7 +210,7 @@ delete_all_alamedascaler()
 run_preloader_command()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Run preloader...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Running preloader...$(tput sgr 0)"
     get_current_preloader_name
     if [ "$current_preloader_pod_name" = "" ]; then
         echo -e "\n$(tput setaf 1)ERROR! Can't find installed preloader pod.$(tput sgr 0)"
@@ -242,7 +242,7 @@ run_preloader_command()
 run_futuremode_preloader()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Run future mode preloader...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Running future mode preloader...$(tput sgr 0)"
     get_current_preloader_name
     if [ "$current_preloader_pod_name" = "" ]; then
         echo -e "\n$(tput setaf 1)ERROR! Can't find installed preloader pod.$(tput sgr 0)"
@@ -268,7 +268,7 @@ run_futuremode_preloader()
 
 scale_down_pods()
 {
-    echo -e "\n$(tput setaf 6)Scale down alameda-ai and alameda-ai-dispatcher ...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Scaling down alameda-ai and alameda-ai-dispatcher ...$(tput sgr 0)"
     original_alameda_ai_replicas="`kubectl get deploy alameda-ai -n $install_namespace -o jsonpath='{.spec.replicas}'`"
     kubectl patch deployment alameda-ai -n $install_namespace -p '{"spec":{"replicas": 0}}'
     kubectl patch deployment alameda-ai-dispatcher -n $install_namespace -p '{"spec":{"replicas": 0}}'
@@ -277,7 +277,7 @@ scale_down_pods()
 
 scale_up_pods()
 {
-    echo -e "\n$(tput setaf 6)Scale up alameda-ai and alameda-ai-dispatcher ...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Scaling up alameda-ai and alameda-ai-dispatcher ...$(tput sgr 0)"
     if [ "`kubectl get deploy alameda-ai -n $install_namespace -o jsonpath='{.spec.replicas}'`" -eq "0" ]; then
         if [ "$original_alameda_ai_replicas" != "" ]; then
             kubectl patch deployment alameda-ai -n $install_namespace -p "{\"spec\":{\"replicas\": $original_alameda_ai_replicas}}"
@@ -300,7 +300,7 @@ scale_up_pods()
 reschedule_dispatcher()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Reschedule alameda-ai dispatcher...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Rescheduling alameda-ai dispatcher...$(tput sgr 0)"
     current_dispatcher_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-ai-dispatcher-"|awk '{print $1}'|head -1`"
     if [ "$current_dispatcher_pod_name" = "" ]; then
         echo -e "\n$(tput setaf 1)ERROR! Can't find alameda-ai dispatcher pod.$(tput sgr 0)"
@@ -326,7 +326,7 @@ reschedule_dispatcher()
 patch_datahub_for_preloader()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Starting patch datahub for preloader...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Patching datahub for preloader...$(tput sgr 0)"
     kubectl get alamedaservice $alamedaservice_name -n $install_namespace -o yaml|grep "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE" -A1|grep -q influxdb
     if [ "$?" != "0" ]; then
         kubectl patch alamedaservice $alamedaservice_name -n $install_namespace --type merge --patch '{"spec":{"alamedaDatahub":{"env":[{"name": "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE","value": "influxdb"}]}}}'
@@ -347,7 +347,7 @@ patch_datahub_for_preloader()
 patch_datahub_back_to_normal()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Starting roll back datahub...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Rolling back datahub...$(tput sgr 0)"
     kubectl get alamedaservice $alamedaservice_name -n $install_namespace -o yaml|grep "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE" -A1|grep -q prometheus
     if [ "$?" != "0" ]; then
         kubectl patch alamedaservice $alamedaservice_name -n $install_namespace --type merge --patch '{"spec":{"alamedaDatahub":{"env":[{"name": "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE","value": "prometheus"}]}}}'
@@ -368,7 +368,7 @@ patch_datahub_back_to_normal()
 check_influxdb_retention()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Starting check retention policy...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Checking retention policy...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     kubectl exec $influxdb_pod_name -n $install_namespace -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_metric -execute "show retention policies"|grep "autogen"|grep -q "3600h"
     if [ "$?" != "0" ]; then
@@ -385,7 +385,7 @@ check_influxdb_retention()
 patch_grafana_for_preloader()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Starting add flag for grafana ...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Adding flag for grafana ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     kubectl exec $influxdb_pod_name -n $install_namespace -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_metric -execute "select * from grafana_config order by time desc limit 1" 2>/dev/null|grep -q true
     if [ "$?" != "0" ]; then
@@ -411,7 +411,7 @@ patch_grafana_for_preloader()
 patch_grafana_back_to_normal()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Starting add flag to roll back grafana ...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Adding flag to roll back grafana ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     kubectl exec $influxdb_pod_name -n $install_namespace -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_metric -execute "select * from grafana_config order by time desc limit 1" 2>/dev/null|grep -q false
     if [ "$?" != "0" ]; then
@@ -437,7 +437,7 @@ patch_grafana_back_to_normal()
 verify_metrics_exist()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Starting verify metrics in influxdb ...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Verifying metrics in influxdb ...$(tput sgr 0)"
     influxdb_pod_name="`kubectl get pods -n $install_namespace |grep "alameda-influxdb-"|awk '{print $1}'|head -1`"
     metrics_list=$(kubectl exec $influxdb_pod_name -n $install_namespace -- influx -ssl -unsafeSsl -precision rfc3339 -username admin -password adminpass -database alameda_metric -execute "show measurements")
     metrics_num=$(echo "$metrics_list"| egrep "application_cpu|application_memory|cluster_cpu|cluster_memory|container_cpu|container_memory|controller_cpu|controller_memory|namespace_cpu|namespace_memory|node_cpu|node_memory" |wc -l)
@@ -669,7 +669,7 @@ enable_preloader_in_alamedaservice()
     get_current_preloader_name
     if [ "$current_preloader_pod_name" != "" ]; then
         echo -e "\n$(tput setaf 6)Skip preloader installation due to preloader pod exist.$(tput sgr 0)"
-        echo -e "Delete preloader pod to renew the pod state..."
+        echo -e "Deleting preloader pod to renew the pod state..."
         kubectl delete pod -n $install_namespace $current_preloader_pod_name
         if [ "$?" != "0" ]; then
             echo -e "\n$(tput setaf 1)Error in deleting preloader pod.$(tput sgr 0)"
@@ -677,7 +677,7 @@ enable_preloader_in_alamedaservice()
             exit 8
         fi
     else
-        echo -e "\n$(tput setaf 6)Enable preloader in alamedaservice...$(tput sgr 0)"
+        echo -e "\n$(tput setaf 6)Enabling preloader in alamedaservice...$(tput sgr 0)"
         kubectl patch alamedaservice $alamedaservice_name -n $install_namespace --type merge --patch '{"spec":{"enablePreloader": true}}'
         if [ "$?" != "0" ]; then
             echo -e "\n$(tput setaf 1)Error in patching alamedaservice $alamedaservice_name.$(tput sgr 0)"
@@ -694,6 +694,7 @@ enable_preloader_in_alamedaservice()
         leave_prog
         exit 8
     fi
+    echo "Done"
     end=`date +%s`
     duration=$((end-start))
     echo "Duration enable_preloader_in_alamedaservice = $duration" >> $debug_log
@@ -702,7 +703,7 @@ enable_preloader_in_alamedaservice()
 disable_preloader_in_alamedaservice()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Disable preloader in alamedaservice...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Disabling preloader in alamedaservice...$(tput sgr 0)"
     get_current_preloader_name
     if [ "$current_preloader_pod_name" != "" ]; then
         kubectl patch alamedaservice $alamedaservice_name -n $install_namespace  --type merge --patch '{"spec":{"enablePreloader": false}}'
