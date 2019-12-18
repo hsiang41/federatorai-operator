@@ -327,7 +327,7 @@ patch_datahub_for_preloader()
 {
     start=`date +%s`
     echo -e "\n$(tput setaf 6)Patching datahub for preloader...$(tput sgr 0)"
-    kubectl get alamedaservice $alamedaservice_name -n $install_namespace -o yaml|grep "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE" -A1|grep -q influxdb
+    kubectl get alamedaservice $alamedaservice_name -n $install_namespace -o yaml|grep "\- name: ALAMEDA_DATAHUB_APIS_METRICS_SOURCE" -A1|grep -q influxdb
     if [ "$?" != "0" ]; then
         kubectl patch alamedaservice $alamedaservice_name -n $install_namespace --type merge --patch '{"spec":{"alamedaDatahub":{"env":[{"name": "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE","value": "influxdb"}]}}}'
         if [ "$?" != "0" ]; then
@@ -348,7 +348,7 @@ patch_datahub_back_to_normal()
 {
     start=`date +%s`
     echo -e "\n$(tput setaf 6)Rolling back datahub...$(tput sgr 0)"
-    kubectl get alamedaservice $alamedaservice_name -n $install_namespace -o yaml|grep "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE" -A1|grep -q prometheus
+    kubectl get alamedaservice $alamedaservice_name -n $install_namespace -o yaml|grep "\- name: ALAMEDA_DATAHUB_APIS_METRICS_SOURCE" -A1|grep -q prometheus
     if [ "$?" != "0" ]; then
         kubectl patch alamedaservice $alamedaservice_name -n $install_namespace --type merge --patch '{"spec":{"alamedaDatahub":{"env":[{"name": "ALAMEDA_DATAHUB_APIS_METRICS_SOURCE","value": "prometheus"}]}}}'
         if [ "$?" != "0" ]; then
