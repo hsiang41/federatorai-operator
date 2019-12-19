@@ -272,6 +272,7 @@ scale_down_pods()
     original_alameda_ai_replicas="`kubectl get deploy alameda-ai -n $install_namespace -o jsonpath='{.spec.replicas}'`"
     kubectl patch deployment alameda-ai -n $install_namespace -p '{"spec":{"replicas": 0}}'
     kubectl patch deployment alameda-ai-dispatcher -n $install_namespace -p '{"spec":{"replicas": 0}}'
+    kubectl patch deployment alameda-recommender -n $install_namespace -p '{"spec":{"replicas": 0}}'
     echo "Done"
 }
 
@@ -291,6 +292,12 @@ scale_up_pods()
         kubectl patch deployment alameda-ai-dispatcher -n $install_namespace -p '{"spec":{"replicas": 1}}'
         do_something="y"
     fi
+
+    if [ "`kubectl get deploy alameda-recommender -n $install_namespace -o jsonpath='{.spec.replicas}'`" -eq "0" ]; then
+        kubectl patch deployment alameda-recommender -n $install_namespace -p '{"spec":{"replicas": 1}}'
+        do_something="y"
+    fi
+
     if [ "$do_something" = "y" ]; then
         wait_until_pods_ready 600 30 $install_namespace 5
     fi

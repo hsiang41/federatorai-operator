@@ -19,8 +19,12 @@ show_usage()
         Operations:
             --get-current-pod-resources
             --get-pod-planning
-            --generate-patch
-            --apply-patch <space> patch file full path [e.g., --apply-patch /tmp/planning-util/patch.yml]
+            --generate-controller-patch
+            --apply-controller-patch <space> patch file full path [e.g., --apply-controller-patch /tmp/planning-util/$controller_patch_yaml]
+            --get-current-namespace-quotas
+            --get-namespace-planning
+            --generate-namespace-quota-patch
+            --apply-namespace-quota-patch <space> patch file full path [e.g., --apply-namespace-quota-patch /tmp/planning-util/$namespace_patch_yaml]
 
 __EOF__
     exit 1
@@ -143,7 +147,7 @@ get_k8s_rest_api_node_port()
 {
     #K8S
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Get REST API service NodePort...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Getting REST API service NodePort...$(tput sgr 0)"
     https_node_port="`kubectl get svc -n $install_namespace |grep -E -o "5056:.{0,22}"|cut -d '/' -f1|cut -d ':' -f2`"
     if [ "$https_node_port" = "" ]; then
         echo -e "\n$(tput setaf 1)Error! Can't find NodePort of REST API service.$(tput sgr 0)"
@@ -193,7 +197,7 @@ check_rest_api_url()
 rest_api_login()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Login to REST API...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Logging into REST API...$(tput sgr 0)"
     check_api_url
     #echo "curl -sS -k -X POST \"$api_url/apis/v1/users/login\" -H \"accept: application/json\" -H \"authorization: Basic YWRtaW46YWRtaW4=\" |jq '.accessToken'|tr -d \"\"\""
     access_token=`curl -sS -k -X POST "$api_url/apis/v1/users/login" -H "accept: application/json" -H "authorization: Basic YWRtaW46YWRtaW4=" |jq '.accessToken'|tr -d "\""`
@@ -235,7 +239,7 @@ check_cluster_name()
 rest_api_get_cluster_name()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Get cluster name...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Getting cluster name...$(tput sgr 0)"
     cluster_name=`curl -sS -k -X GET "$api_url/apis/v1/resources/clusters" -H "accept: application/json" -H "Authorization: Bearer $access_token" |jq '.data[].name'|tr -d "\""`
     check_cluster_name
 
@@ -249,25 +253,25 @@ rest_api_get_cluster_name()
 rest_api_get_pod_planning()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Get planning for pod ($target_pod_name) in ns ($target_namespace)...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Getting planning for pod ($target_pod_name) in ns ($target_namespace)...$(tput sgr 0)"
     interval_start_time="$start"
     interval_end_time=$(($interval_start_time + 3599)) #59min59sec
     granularity="3600"
     type="recommendation"
 
     planning_values=`curl -sS -k -X GET "$api_url/apis/v1/plannings/clusters/$cluster_name/namespaces/$target_namespace/pods?granularity=$granularity&type=$type&names=$target_pod_name&limit=1&order=desc&startTime=$interval_start_time&endTime=$interval_end_time" -H "accept: application/json" -H "Authorization: Bearer $access_token" |jq '.plannings[].containerPlannings[0]|"\(.limitPlannings.CPU_USAGE_SECONDS_PERCENTAGE[].numValue) \(.requestPlannings.CPU_USAGE_SECONDS_PERCENTAGE[].numValue) \(.limitPlannings.MEMORY_USAGE_BYTES[].numValue) \(.requestPlannings.MEMORY_USAGE_BYTES[].numValue)"'|tr -d "\""`
-    limits_cpu="`echo $planning_values |awk '{print $1}'`"
-    requests_cpu="`echo $planning_values |awk '{print $2}'`"
-    limits_memory="`echo $planning_values |awk '{print $3}'`"
-    requests_memory="`echo $planning_values |awk '{print $4}'`"
-    echo "Planning: ----------------------------------"
-    echo "resources.limits.cpu = $limits_cpu(m)"
-    echo "resources.limits.momory = $limits_memory(byte)"
-    echo "resources.requests.cpu = $requests_cpu(m)"
-    echo "resources.requests.memory = $requests_memory(byte)"
+    limits_pod_cpu="`echo $planning_values |awk '{print $1}'`"
+    requests_pod_cpu="`echo $planning_values |awk '{print $2}'`"
+    limits_pod_memory="`echo $planning_values |awk '{print $3}'`"
+    requests_pod_memory="`echo $planning_values |awk '{print $4}'`"
+    echo "-------Planning for pod $target_pod_name"
+    echo "resources.limits.cpu = $limits_pod_cpu(m)"
+    echo "resources.limits.momory = $limits_pod_memory(byte)"
+    echo "resources.requests.cpu = $requests_pod_cpu(m)"
+    echo "resources.requests.memory = $requests_pod_memory(byte)"
     echo "--------------------------------------------"
 
-    if [ "$limits_cpu" = "" ] || [ "$requests_cpu" = "" ] || [ "$limits_memory" = "" ] || [ "$requests_memory" = "" ]; then
+    if [ "$limits_pod_cpu" = "" ] || [ "$requests_pod_cpu" = "" ] || [ "$limits_pod_memory" = "" ] || [ "$requests_pod_memory" = "" ]; then
         echo -e "\n$(tput setaf 1)Error! Failed to get pod ($target_pod_name) planning. Missing value.$(tput sgr 0)"
         leave_prog
         exit 8
@@ -277,6 +281,39 @@ rest_api_get_pod_planning()
     end=`date +%s`
     duration=$((end-start))
     echo "Duration rest_api_get_pod_planning = $duration" >> $debug_log
+}
+
+rest_api_get_namespace_planning()
+{
+    start=`date +%s`
+    echo -e "\n$(tput setaf 6)Getting planning for namespace ($target_namespace)...$(tput sgr 0)"
+    interval_start_time="$start"
+    interval_end_time=$(($interval_start_time + 3599)) #59min59sec
+    granularity="3600"
+    type="recommendation"
+
+    planning_values=`curl -sS -k -X GET "$api_url/apis/v1/plannings/clusters/$cluster_name/namespaces/$target_namespace?granularity=$granularity&type=$type&limit=1&order=desc&startTime=$interval_start_time&endTime=$interval_end_time" -H "accept: application/json" -H "Authorization: Bearer $access_token" |jq '.plannings[].plannings[0]|"\(.limitPlannings.CPU_USAGE_SECONDS_PERCENTAGE[].numValue) \(.requestPlannings.CPU_USAGE_SECONDS_PERCENTAGE[].numValue) \(.limitPlannings.MEMORY_USAGE_BYTES[].numValue) \(.requestPlannings.MEMORY_USAGE_BYTES[].numValue)"'|tr -d "\""`
+    limits_ns_cpu="`echo $planning_values |awk '{print $1}'`"
+    requests_ns_cpu="`echo $planning_values |awk '{print $2}'`"
+    limits_ns_memory="`echo $planning_values |awk '{print $3}'`"
+    requests_ns_memory="`echo $planning_values |awk '{print $4}'`"
+    echo "-------Planning for namespace $target_namespace"
+    echo "resources.limits.cpu = $limits_ns_cpu(m)"
+    echo "resources.limits.momory = $limits_ns_memory(byte)"
+    echo "resources.requests.cpu = $requests_ns_cpu(m)"
+    echo "resources.requests.memory = $requests_ns_memory(byte)"
+    echo "--------------------------------------------"
+
+    if [ "$limits_ns_cpu" = "" ] || [ "$requests_ns_cpu" = "" ] || [ "$limits_ns_memory" = "" ] || [ "$requests_ns_memory" = "" ]; then
+        echo -e "\n$(tput setaf 1)Error! Failed to get namespace ($target_namespace) planning. Missing value.$(tput sgr 0)"
+        leave_prog
+        exit 8
+    fi
+
+    echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration rest_api_get_namespace_planning = $duration" >> $debug_log
 }
 
 get_needed_info()
@@ -298,7 +335,7 @@ get_owner_reference()
 get_controller_info()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Get pod controller type and name...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Getting pod controller type and name...$(tput sgr 0)"
     owner_reference_kind="pod"
     owner_reference_name="$target_pod_name"
     fist_run="y"
@@ -364,41 +401,76 @@ check_support_controller()
 generate_controller_patch()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Get current pod resource settings...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Generating controller patch...$(tput sgr 0)"
 
-    if [ "$limits_cpu" = "" ] || [ "$requests_cpu" = "" ] || [ "$limits_memory" = "" ] || [ "$requests_memory" = "" ]; then
-        msg="Error! planning values ("
-        [ "$limits_cpu" = "" ] && msg="$msg limits_cpu"
-        [ "$requests_cpu" = "" ] && msg="$msg requests_cpu"
-        [ "$limits_memory" = "" ] && msg="$msg limits_memory"
-        [ "$requests_memory" = "" ] && msg="$msg requests_memory"
-        msg="$msg ) are empty. Make sure you run --get-pod-planning beforehand."
-        echo -e "\n$(tput setaf 1)$msg$(tput sgr 0)"
-        leave_prog
-        exit 8
+    if [ "$limits_pod_cpu" = "" ] || [ "$requests_pod_cpu" = "" ] || [ "$limits_pod_memory" = "" ] || [ "$requests_pod_memory" = "" ]; then
+        echo "Calling function 'get pod planning' first..."
+        rest_api_get_pod_planning
     fi
 
     check_support_controller
 
-    cat > ${patch_yaml} << __EOF__
+    if [ "$openshift_minor_version" != "" ]; then
+        # OpenShift
+        crtl_name="nginx-stable"
+    else
+        # K8S
+        crtl_name="nginx"
+    fi
+
+    image_name="`kubectl get $owner_reference_kind $owner_reference_name -n $target_namespace -o json|jq '.spec.template.spec.containers[0].image'`"
+
+    cat > ${controller_patch_yaml} << __EOF__
 spec:
   template:
     spec:
       containers:
-        resources:
-          requests:
-            cpu: ${requests_cpu}m
-            memory: ${requests_memory}
-          limits:
-            cpu: ${limits_cpu}m
-            memory: ${limits_memory}
+        - image: ${image_name}
+          name: ${crtl_name}
+          resources:
+            requests:
+              cpu: ${requests_pod_cpu}m
+              memory: ${requests_pod_memory}
+            limits:
+              cpu: ${limits_pod_cpu}m
+              memory: ${limits_pod_memory}
 __EOF__
 
-    echo "Patch file \"${patch_yaml}\" is generated under $file_folder"
+    echo "Patch file \"${controller_patch_yaml}\" is generated under $file_folder"
     echo "Done"
     end=`date +%s`
     duration=$((end-start))
     echo "Duration generate_controller_patch = $duration" >> $debug_log
+}
+
+generate_namespace_quotas_patch()
+{
+    start=`date +%s`
+    echo -e "\n$(tput setaf 6)Generating namespace patch...$(tput sgr 0)"
+
+    if [ "$limits_ns_cpu" = "" ] || [ "$requests_ns_cpu" = "" ] || [ "$limits_ns_memory" = "" ] || [ "$requests_ns_memory" = "" ]; then
+        echo "Calling 'get namespace planning' first..."
+        rest_api_get_namespace_planning
+    fi
+
+    cat > ${namespace_patch_yaml} << __EOF__
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota
+spec:
+  hard:
+    requests.cpu: ${requests_ns_cpu}m
+    requests.memory: ${requests_ns_memory}
+    limits.cpu: ${limits_ns_cpu}m
+    limits.memory: ${limits_ns_memory}
+__EOF__
+
+    echo "Patch file \"${namespace_patch_yaml}\" is generated under $file_folder"
+    echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration generate_namespace_quotas_patch = $duration" >> $debug_log
 }
 
 apply_controller_patch()
@@ -406,29 +478,57 @@ apply_controller_patch()
     start=`date +%s`
     echo -e "\n$(tput setaf 6)Applying controller patch...$(tput sgr 0)"
 
-    if [ ! -f "$patch_path" ]; then
-        echo -e "\n$(tput setaf 1)Error! Patch file doesn't exist. Need to run --generate-patch function first.$(tput sgr 0)"
+    if [ ! -f "$controller_patch_path" ]; then
+        echo -e "\n$(tput setaf 1)Error! Patch file doesn't exist. Need to run --generate-controller-patch function first.$(tput sgr 0)"
         leave_prog
         exit 8
     fi
 
-    kubectl patch $owner_reference_kind $owner_reference_name -n $target_namespace --type merge --patch "$(cat $patch_yaml)"
+    kubectl patch $owner_reference_kind $owner_reference_name -n $target_namespace --type merge --patch "$(cat $controller_patch_yaml)"
     if [ "$?" != "0" ]; then
         echo -e "\n$(tput setaf 1)Error in patching $owner_reference_kind $owner_reference_name in namespace $target_namespace.$(tput sgr 0)"
         leave_prog
         exit 8
     fi
     wait_until_pods_ready 600 20 $target_namespace 1
+
+    # Get new target pod name
+    target_pod_name="`kubectl get pods -n $target_namespace -o name |head -1|cut -d '/' -f2`"
+
     echo "Done"
     end=`date +%s`
     duration=$((end-start))
     echo "Duration apply_controller_patch = $duration" >> $debug_log
 }
 
+apply_namespace_quotas_patch()
+{
+    start=`date +%s`
+    echo -e "\n$(tput setaf 6)Applying namespace quotas patch...$(tput sgr 0)"
+
+    if [ ! -f "$namespace_patch_path" ]; then
+        echo -e "\n$(tput setaf 1)Error! Patch file doesn't exist. Need to run --generate-namespace-quota-patch function first.$(tput sgr 0)"
+        leave_prog
+        exit 8
+    fi
+
+    kubectl apply -f $namespace_patch_path --namespace=$target_namespace
+    if [ "$?" != "0" ]; then
+        echo -e "\n$(tput setaf 1)Error in set up quota for namespace $target_namespace$(tput sgr 0)"
+        leave_prog
+        exit 8
+    fi
+
+    echo "Done"
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration apply_namespace_quotas_patch = $duration" >> $debug_log
+}
+
 display_pod_resources()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Get current pod resource settings...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Getting current pod resources...$(tput sgr 0)"
     echo "target_namespace= $target_namespace"
     echo "target_pod_name= $target_pod_name"
     echo "--------------------------------------------"
@@ -439,6 +539,28 @@ display_pod_resources()
     duration=$((end-start))
     echo "Duration display_pod_resources = $duration" >> $debug_log
 }
+
+display_namespace_quotas()
+{
+    start=`date +%s`
+    echo -e "\n$(tput setaf 6)Getting current namespace quotas...$(tput sgr 0)"
+    echo "target_namespace= $target_namespace"
+    resourcequota_name="`kubectl get resourcequota -n $target_namespace -o name 2>/dev/null |cut -d '/' -f2`"
+    echo "--------------------------------------------"
+    if [ "$resourcequota_name" = "" ]; then
+        echo "{}"
+    else
+        kubectl get resourcequota $resourcequota_name -n $target_namespace -o json|jq '.spec'
+    fi
+    echo "--------------------------------------------"
+    echo "Done."
+    end=`date +%s`
+    duration=$((end-start))
+    echo "Duration display_namespace_quotas = $duration" >> $debug_log
+}
+
+controller_patch_yaml="nginx_patch.yaml"
+namespace_patch_yaml="namespace_patch.yaml"
 
 while getopts "h-:" o; do
     case "${o}" in
@@ -461,18 +583,36 @@ while getopts "h-:" o; do
                     fi
                     ;;
                 get-current-pod-resources)
-                    get_current_pod_resources="y"
+                    should_get_current_pod_resources="y"
+                    ;;
+                get-current-namespace-quotas)
+                    should_get_current_namespace_quotas="y"
                     ;;
                 get-pod-planning)
-                    get_pod_planning="y"
+                    should_get_pod_planning="y"
                     ;;
-                generate-patch)
-                    generate_patch="y"
+                get-namespace-planning)
+                    should_get_namespace_planning="y"
                     ;;
-                apply-patch)
-                    apply_patch="y"
-                    patch_path="${!OPTIND}"; OPTIND=$(( $OPTIND + 1 ))
-                    if [ "$patch_path" = "" ]; then
+                generate-controller-patch)
+                    should_gen_controller_patch="y"
+                    ;;
+                generate-namespace-quota-patch)
+                    should_gen_namespace_quota_patch="y"
+                    ;;
+                apply-controller-patch)
+                    should_apply_controller_patch="y"
+                    controller_patch_path="${!OPTIND}"; OPTIND=$(( $OPTIND + 1 ))
+                    if [ "$controller_patch_path" = "" ]; then
+                        echo -e "\n$(tput setaf 1)Error! Missing --${OPTARG} value$(tput sgr 0)"
+                        show_usage
+                        exit
+                    fi
+                    ;;
+                apply-namespace-quota-patch)
+                    should_apply_namespace_quota_patch="y"
+                    namespace_patch_path="${!OPTIND}"; OPTIND=$(( $OPTIND + 1 ))
+                    if [ "$namespace_patch_path" = "" ]; then
                         echo -e "\n$(tput setaf 1)Error! Missing --${OPTARG} value$(tput sgr 0)"
                         show_usage
                         exit
@@ -496,23 +636,22 @@ done
 [ "$target_namespace" = "" ] && show_usage
 [ "$target_pod_name" = "" ] && show_usage
 
-if [ "$get_current_pod_resources" = "" ] && [ "$get_pod_planning" = "" ] && [ "$generate_patch" = "" ] && [ "$apply_patch" = "" ]; then
+if [ "$should_get_current_pod_resources" = "" ] && [ "$should_get_pod_planning" = "" ] && [ "$should_gen_controller_patch" = "" ] && [ "$should_apply_controller_patch" = "" ] && [ "$should_get_current_namespace_quotas" = "" ] && [ "$should_get_namespace_planning" = "" ] && [ "$should_gen_namespace_quota_patch" = "" ] && [ "$should_apply_namespace_quota_patch" = "" ]; then
     echo -e "\n$(tput setaf 1)Error! At least one operation must be specified.$(tput sgr 0)"
     show_usage
 fi
 
-[ "$get_current_pod_resources" = "" ] && get_current_pod_resources="n"
-[ "$get_pod_planning" = "" ] && get_pod_planning="n"
-[ "$generate_patch" = "" ] && generate_patch="n"
-[ "$apply_patch" = "" ] && apply_patch="n"
+[ "$should_get_current_pod_resources" = "" ] && should_get_current_pod_resources="n"
+[ "$should_get_pod_planning" = "" ] && should_get_pod_planning="n"
+[ "$should_gen_controller_patch" = "" ] && should_gen_controller_patch="n"
+[ "$should_apply_controller_patch" = "" ] && should_apply_controller_patch="n"
+[ "$should_get_current_namespace_quotas" = "" ] && should_get_current_namespace_quotas="n"
+[ "$should_get_namespace_planning" = "" ] && should_get_namespace_planning="n"
+[ "$should_gen_namespace_quota_patch" = "" ] && should_gen_namespace_quota_patch="n"
+[ "$should_apply_namespace_quota_patch" = "" ] && should_apply_namespace_quota_patch="n"
 
 echo "target_namespace = $target_namespace"
 echo "target_pod_name = $target_pod_name"
-echo "get_current_pod_resources = $get_current_pod_resources"
-echo "get_pod_planning = $get_pod_planning"
-echo "generate_patch =$generate_patch"
-echo "apply_patch =$apply_patch"
-echo "patch_path =$patch_path"
 
 kubectl version|grep -q "^Server"
 if [ "$?" != "0" ];then
@@ -537,7 +676,7 @@ if [ "$?" != "0" ];then
     exit
 fi
 
-echo "Checking environment version..."
+echo -e "\n$(tput setaf 6)Checking environment version...$(tput sgr 0)"
 check_version
 echo "...Passed"
 
@@ -550,7 +689,6 @@ fi
 
 file_folder="/tmp/planning-util"
 debug_log="debug.log"
-patch_yaml="nginx_patch.yaml"
 
 # To reserve patch file
 #rm -rf $file_folder
@@ -561,21 +699,38 @@ echo "Receiving command '$0 $@'" > $debug_log
 
 get_needed_info
 
-if [ "$get_current_pod_resources" = "y" ];then  
+if [ "$should_get_current_pod_resources" = "y" ];then
     display_pod_resources
 fi
 
-if [ "$get_pod_planning" = "y" ];then
+if [ "$should_get_pod_planning" = "y" ];then
     rest_api_get_pod_planning
 fi
 
-if [ "$generate_patch" = "y" ];then
+if [ "$should_gen_controller_patch" = "y" ];then
     generate_controller_patch
 fi
 
-if [ "$apply_patch" = "y" ];then
+if [ "$should_apply_controller_patch" = "y" ];then
     apply_controller_patch
     display_pod_resources
+fi
+
+if [ "$should_get_current_namespace_quotas" = "y" ];then
+    display_namespace_quotas
+fi
+
+if [ "$should_get_namespace_planning" = "y" ];then
+    rest_api_get_namespace_planning
+fi
+
+if [ "$should_gen_namespace_quota_patch" = "y" ];then
+    generate_namespace_quotas_patch
+fi
+
+if [ "$should_apply_namespace_quota_patch" = "y" ];then
+    apply_namespace_quotas_patch
+    display_namespace_quotas
 fi
 
 leave_prog
