@@ -465,7 +465,7 @@ verify_metrics_exist()
 delete_nginx_example()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Deleting nginx sample ...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Deleting NGINX sample ...$(tput sgr 0)"
     dc_name="`kubectl get dc -n $nginx_ns 2>/dev/null|grep -v "NAME"|awk '{print $1}'`"
     if [ "$dc_name" != "" ]; then
         kubectl delete dc $dc_name -n $nginx_ns
@@ -487,7 +487,7 @@ delete_nginx_example()
 new_nginx_example()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Creating new nginx sample pod ...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Creating new NGINX sample pod ...$(tput sgr 0)"
 
     if [[ "`kubectl get po -n $nginx_ns 2>/dev/null|grep -v "NAME"|grep "Running"|wc -l`" -gt "0" ]]; then
         echo "nginx-preloader-sample namespace and pod are already exist."
@@ -497,7 +497,7 @@ new_nginx_example()
             oc new-project $nginx_ns
             oc new-app twalter/openshift-nginx:stable --name nginx-stable
             if [ "$?" != "0" ]; then
-                echo -e "\n$(tput setaf 1)Error! create nginx app failed.$(tput sgr 0)"
+                echo -e "\n$(tput setaf 1)Error! create NGINX app failed.$(tput sgr 0)"
                 leave_prog
                 exit 8
             fi
@@ -534,7 +534,7 @@ __EOF__
             kubectl create ns $nginx_ns
             kubectl apply -f $nginx_k8s_yaml
             if [ "$?" != "0" ]; then
-                echo -e "\n$(tput setaf 1)Error! create nginx app failed.$(tput sgr 0)"
+                echo -e "\n$(tput setaf 1)Error! create NGINX app failed.$(tput sgr 0)"
                 leave_prog
                 exit 8
             fi
@@ -551,7 +551,7 @@ __EOF__
 add_alamedascaler_for_nginx()
 {
     start=`date +%s`
-    echo -e "\n$(tput setaf 6)Adding nginx alamedascaler ...$(tput sgr 0)"
+    echo -e "\n$(tput setaf 6)Adding NGINX alamedascaler ...$(tput sgr 0)"
     nginx_alamedascaler_file="nginx_alamedascaler_file"
     kubectl get alamedascaler -n ${nginx_ns} 2>/dev/null|grep -q "nginx-alamedascaler"
     if [ "$?" != "0" ]; then
@@ -559,7 +559,7 @@ add_alamedascaler_for_nginx()
 apiVersion: autoscaling.containers.ai/v1alpha1
 kind: AlamedaScaler
 metadata:
-    name: nginx-alamedascaler
+    name: nginx-app
     namespace: ${nginx_ns}
 spec:
     policy: stable
@@ -572,7 +572,7 @@ spec:
 __EOF__
         kubectl apply -f ${nginx_alamedascaler_file}
         if [ "$?" != "0" ]; then
-            echo -e "\n$(tput setaf 1)Error! Add alamedascaler for nginx app failed.$(tput sgr 0)"
+            echo -e "\n$(tput setaf 1)Error! Add alamedascaler for NGINX app failed.$(tput sgr 0)"
             leave_prog
             exit 8
         fi
