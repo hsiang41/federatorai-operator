@@ -321,7 +321,9 @@ get_needed_info()
     check_rest_api_url
     rest_api_login
     rest_api_get_cluster_name
-    get_controller_info
+    if [ "$do_pod_related" != "" ]; then
+        get_controller_info
+    fi
 }
 
 get_owner_reference()
@@ -633,10 +635,20 @@ while getopts "h-:" o; do
     esac
 done
 
-[ "$target_namespace" = "" ] && show_usage
-[ "$target_pod_name" = "" ] && show_usage
+if [ "$should_get_current_pod_resources" != "" ] || [ "$should_get_pod_planning" != "" ] || [ "$should_gen_controller_patch" != "" ] || [ "$should_apply_controller_patch" != "" ]; then
+    do_pod_related="y"
+fi
 
-if [ "$should_get_current_pod_resources" = "" ] && [ "$should_get_pod_planning" = "" ] && [ "$should_gen_controller_patch" = "" ] && [ "$should_apply_controller_patch" = "" ] && [ "$should_get_current_namespace_quotas" = "" ] && [ "$should_get_namespace_planning" = "" ] && [ "$should_gen_namespace_quota_patch" = "" ] && [ "$should_apply_namespace_quota_patch" = "" ]; then
+if [ "$should_get_current_namespace_quotas" != "" ] || [ "$should_get_namespace_planning" != "" ] || [ "$should_gen_namespace_quota_patch" != "" ] || [ "$should_apply_namespace_quota_patch" != "" ]; then
+    do_ns_related="y"
+fi
+
+if [ "$do_pod_related" != "" ]; then
+    [ "$target_namespace" = "" ] && show_usage
+    [ "$target_pod_name" = "" ] && show_usage
+elif [ "$do_ns_related" != "" ]; then
+    [ "$target_namespace" = "" ] && show_usage
+else
     echo -e "\n$(tput setaf 1)Error! At least one operation must be specified.$(tput sgr 0)"
     show_usage
 fi
