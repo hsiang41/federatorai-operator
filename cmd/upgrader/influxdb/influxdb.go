@@ -49,7 +49,7 @@ var (
 	// limaNewMeasurements is a map from database name to list of measurements that are created since Lima
 	limaNewMeasurements = map[string][]string{
 		"alameda_cluster_status": []string{
-			"pod",
+			"namespace",
 		},
 	}
 
@@ -144,6 +144,11 @@ func upgradeFromKiloToLima() error {
 		logger.Info("Drop Kilo databases from influxdb.", "databases", kiloDatabasesToDrop)
 		if err := dropKiloDatabases(influxdbClient); err != nil {
 			return errors.Wrap(err, "drop Kilo influxdb databases failed")
+		}
+
+		logger.Info("Scale up and wait replicase of workload controllers to 1.", "controllers", controllers)
+		if err := scaleAndWaitWorkloadControllers(ctx, controllers, 1); err != nil {
+			return errors.Wrap(err, "scale workload controller failed")
 		}
 	}
 
@@ -249,7 +254,7 @@ type workloadController struct {
 	Name      string
 }
 
-// scaleAndWaitWorkloadControllers scale out the controllers to desired replicas and wait until all replicas ready
+// scaleAndWaitWorkloadControllers scale the controllers to desired replicas and wait until all replicas equals status.replicas
 func scaleAndWaitWorkloadControllers(ctx context.Context, controllers []workloadController, replicas int32) error {
 
 	wg := errgroup.Group{}
@@ -289,33 +294,52 @@ func scaleAndWaitWorkloadControllers(ctx context.Context, controllers []workload
 				statefulSet.Spec.Replicas = &replicas
 			}
 
+			logger.Info("Scaling controller.", "Controller", copyController)
 			err = k8sClient.Update(ctx, instacne)
 			if err != nil {
 				return errors.Wrapf(err, "update %s failed", copyController.Kind)
 			}
 
-			pollInterval := 1 * time.Second
+			pollInterval := 3 * time.Second
 			return wait.PollUntil(pollInterval, func() (bool, error) {
 
+				var instacne runtime.Object
+				switch copyController.Kind {
+				case workloadControllerDeployment:
+					instacne = &appsv1.Deployment{}
+				case workloadControllerStatefulSet:
+					instacne = &appsv1.StatefulSet{}
+				}
+
+				logger.Info("Polling controller spec.", "Controller", copyController)
 				err := k8sClient.Get(ctx, client.ObjectKey{Namespace: copyController.Namespace, Name: copyController.Name}, instacne)
 				if err != nil {
 					return false, errors.Wrapf(err, "get %s failed", copyController.Kind)
 				}
 
 				done := false
+				var readyReplicas int32 = -1
 				switch copyController.Kind {
 				case workloadControllerDeployment:
 					deployment, ok := instacne.(*appsv1.Deployment)
 					if !ok {
 						return false, errors.Wrapf(err, "convert runtime object to %s failed", copyController.Kind)
 					}
-					done = deployment.Status.ReadyReplicas == replicas
+					readyReplicas = deployment.Status.Replicas
+					done = (readyReplicas == replicas)
 				case workloadControllerStatefulSet:
 					statefulSet, ok := instacne.(*appsv1.StatefulSet)
 					if !ok {
 						return false, errors.Wrapf(err, "convert runtime object to %s failed", copyController.Kind)
 					}
-					done = statefulSet.Status.ReadyReplicas == replicas
+					readyReplicas = statefulSet.Status.Replicas
+					done = (readyReplicas == replicas)
+				}
+
+				if done {
+					logger.Info("Scaling controller done.", "desiredReplicas", replicas, "readyReplicas", readyReplicas, "Controller", copyController)
+				} else {
+					logger.Info("Retry polling controller.", "desiredReplicas", replicas, "readyReplicas", readyReplicas, "Controller", copyController)
 				}
 				return done, nil
 			}, ctx.Done())
