@@ -226,7 +226,7 @@ get_restapi_route()
         echo -e "\n========================================"
         echo "You can now access Federatorai REST API through $(tput setaf 6)https://${link} $(tput sgr 0)"
         echo "Default login credential is $(tput setaf 6)admin/admin$(tput sgr 0)"
-        echo "The REST API online document can be find in $(tput setaf 6)https://${link}/apis/v1/swagger/index.html $(tput sgr 0)"
+        echo "The REST API online document can be found in $(tput setaf 6)https://${link}/apis/v1/swagger/index.html $(tput sgr 0)"
         echo "========================================"
         else
             echo "Warning! Failed to obtain Federatorai REST API route address."
@@ -236,7 +236,7 @@ get_restapi_route()
             echo -e "\n========================================"
             echo "You can now access Federatorai REST API through $(tput setaf 6)https://<YOUR IP>:$rest_api_node_port $(tput sgr 0)"
             echo "Default login credential is $(tput setaf 6)admin/admin$(tput sgr 0)"
-            echo "The REST API online document can be find in $(tput setaf 6)https://<YOUR IP>:$rest_api_node_port/apis/v1/swagger/index.html $(tput sgr 0)"
+            echo "The REST API online document can be found in $(tput setaf 6)https://<YOUR IP>:$rest_api_node_port/apis/v1/swagger/index.html $(tput sgr 0)"
             echo "========================================"
         fi
     fi
