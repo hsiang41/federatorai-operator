@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: federatorai-agent
-        image: quay.io/prophetstor/federatorai-agent-ubi:v4.2.259
+        image: {{.Image.FederatoraiAgent}}
         imagePullPolicy: Always
         volumeMounts:
           - name: federatorai-agent-config

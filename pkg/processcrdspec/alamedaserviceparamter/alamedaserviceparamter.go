@@ -343,6 +343,7 @@ type AlamedaServiceParamter struct {
 	EnableDispatcher                    bool
 	EnablePreloader                     bool
 	EnableWeavescope                    bool
+	ImageLocation                       string
 	Version                             string
 	PrometheusService                   string
 	Storages                            []v1alpha1.StorageSpec
@@ -358,6 +359,7 @@ type AlamedaServiceParamter struct {
 	AlamedaExecutorSectionSet           v1alpha1.AlamedaComponentSpec
 	AlamedaDispatcherSectionSet         v1alpha1.AlamedaComponentSpec
 	AlamedaFedemeterSectionSet          v1alpha1.AlamedaComponentSpec
+	AlamedaFedemeterInfluxdbSectionSet  v1alpha1.AlamedaComponentSpec
 	AlamedaWeavescopeSectionSet         v1alpha1.AlamedaComponentSpec
 	AlamedaAnalyzerSectionSet           v1alpha1.AlamedaComponentSpec
 	AlamedaNotifierSectionSet           v1alpha1.AlamedaComponentSpec
@@ -381,6 +383,7 @@ func NewAlamedaServiceParamter(instance *v1alpha1.AlamedaService) *AlamedaServic
 		EnableDispatcher:                    *instance.Spec.EnableDispatcher,
 		EnablePreloader:                     instance.Spec.EnablePreloader,
 		EnableWeavescope:                    instance.Spec.EnableWeavescope,
+		ImageLocation:                       instance.Spec.ImageLocation,
 		Version:                             instance.Spec.Version,
 		PrometheusService:                   instance.Spec.PrometheusService,
 		Storages:                            instance.Spec.Storages,
@@ -398,6 +401,7 @@ func NewAlamedaServiceParamter(instance *v1alpha1.AlamedaService) *AlamedaServic
 		AlamedaRabbitMQSectionSet:           instance.Spec.AlamedaRabbitMQSectionSet,
 		AlamedaAnalyzerSectionSet:           instance.Spec.AlamedaAnalyzerSectionSet,
 		AlamedaFedemeterSectionSet:          instance.Spec.AlamedaFedemeterSectionSet,
+		AlamedaFedemeterInfluxdbSectionSet:  instance.Spec.AlamedaFedemeterInfluxDBSectionSet,
 		AlamedaWeavescopeSectionSet:         instance.Spec.AlamedaWeavescopeSectionSet,
 		FederatoraiAgentSectionSet:          instance.Spec.FederatoraiAgentSectionSet,
 		AlamedaNotifierSectionSet:           instance.Spec.AlamedaNotifierSectionSet,

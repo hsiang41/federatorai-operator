@@ -22,7 +22,7 @@ spec:
       serviceAccountName: alameda-executor
       containers:
       - name: alameda-executor
-        image: quay.io/prophetstor/alameda-executor-ubi:v0.3.8
+        image: {{.Image.Executor}}
         imagePullPolicy: Always
         volumeMounts:
           - name: alameda-executor-config

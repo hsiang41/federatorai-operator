@@ -28,7 +28,7 @@ spec:
             - containerPort: 9091
               name: ai-metrics
               protocol: TCP
-        image: quay.io/prophetstor/alameda-ai:v0.3.8
+        image: {{.Image.AIEngine}}
         imagePullPolicy: IfNotPresent
         resources:
           requests:

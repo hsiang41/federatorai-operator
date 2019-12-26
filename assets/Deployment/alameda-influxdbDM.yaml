@@ -26,7 +26,7 @@ spec:
       #   runAsUser: 1000
       containers:
       - name: influxdb
-        image: influxdb:1.7-alpine
+        image: {{.Image.InfluxDB}}
         imagePullPolicy: IfNotPresent
         env:
         - name: INFLUXDB_REPORTING_DISABLED

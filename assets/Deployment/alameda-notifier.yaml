@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: alameda-notifier
-        image: quay.io/prophetstor/alameda-notifier-ubi:v4.2.259        
+        image: {{.Image.Notifier}}
         env:
           - name: NAMESPACE_NAME
             valueFrom:

@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: federatorai-agent-preloader
-        image: quay.io/prophetstor/federatorai-agent-preloader:v4.2.512
+        image: {{.Image.FederatoraiAgentPreloader}}
         imagePullPolicy: Always
         volumeMounts:
           - name: federatorai-agent-preloader-config

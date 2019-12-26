@@ -20,7 +20,7 @@ spec:
       #  kubernetes.io/hostname: "netrg6akfi-worker-1"
       containers:
       - name: fedemeter-influxdb
-        image: quay.io/prophetstor/fedemeter-influxdb:v0.3.39
+        image: {{.Image.FedemeterInfluxDB}}
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8086

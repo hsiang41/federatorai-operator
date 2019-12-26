@@ -30,6 +30,7 @@ type AlamedaServiceSpec struct {
 	EnablePreloader   bool                  `json:"enablePreloader"`
 	SelfDriving       bool                  `json:"selfDriving"`
 	Version           string                `json:"version"`
+	ImageLocation     string                `json:"imageLocation"`
 	PrometheusService string                `json:"prometheusService"`
 	Storages          []StorageSpec         `json:"storages"`
 	ServiceExposures  []ServiceExposureSpec `json:"serviceExposures"`
@@ -46,6 +47,7 @@ type AlamedaServiceSpec struct {
 	AlamedaRecommenderSectionSet        AlamedaComponentSpec    `json:"alamedaRecommender"`
 	AlamedaExecutorSectionSet           AlamedaComponentSpec    `json:"alamedaExecutor"`
 	AlamedaFedemeterSectionSet          AlamedaComponentSpec    `json:"fedemeter"`
+	AlamedaFedemeterInfluxDBSectionSet  AlamedaComponentSpec    `json:"fedemeterInfluxdb"`
 	AlamedaWeavescopeSectionSet         AlamedaComponentSpec    `json:"alameda-weavescope"`
 	AlamedaDispatcherSectionSet         AlamedaComponentSpec    `json:"alameda-dispatcher"`
 	AlamedaRabbitMQSectionSet           AlamedaComponentSpec    `json:"alamedaRabbitMQ"`

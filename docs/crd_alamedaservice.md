@@ -145,6 +145,9 @@ spec:
 - Field: enableFedemeter
   - type: boolean
   - description: Federator.ai Operator will deploy Fedemeter and you must add your Fedemeter serviceAccount to privileged SecurityContextConstraints
+- Field: imageLocation
+  - type: string
+  - description: It sets the image location when pulling Alameda component images.
 - Field: version
   - type: string
   - description: It sets the version tag when pulling Alameda component images.
@@ -186,7 +189,10 @@ spec:
   - description: Spec for Alameda-executor component. This field is optional.
 - Field: fedemeter
   - type: [AlamedaComponentSpec](#alamedacomponentspec)
-  - description: Spec for fedemeter component. This field is optional.
+  - description: Spec for fedemeter API component. This field is optional.
+- Field: fedemeterInfluxdb
+  - type: [AlamedaComponentSpec](#alamedacomponentspec)
+  - description: Spec for fedemeter influxDB component. This field is optional.
 - Field: alameda-weavescope
   - type: [AlamedaComponentSpec](#alamedacomponentspec)
   - description: Spec for Alameda-weavescope component. This field is optional.

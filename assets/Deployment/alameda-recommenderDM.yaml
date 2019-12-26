@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: alameda-recommender
-        image: quay.io/prophetstor/alameda-recommender-ubi:v0.3.8
+        image: {{.Image.Recommender}}
         imagePullPolicy: Always
         env:
         - name: FEDERATOR_AI_SETUP_TYPE

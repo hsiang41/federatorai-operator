@@ -21,7 +21,7 @@ spec:
       serviceAccountName: alameda-analyzer
       containers:
       - name: alameda-analyzer
-        image: quay.io/prophetstor/alameda-analyzer-ubi:v0.3.54
+        image: {{.Image.Analyzer}}
         imagePullPolicy: Always
         readinessProbe:
           exec:

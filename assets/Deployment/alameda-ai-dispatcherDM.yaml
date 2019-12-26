@@ -27,7 +27,7 @@ spec:
             - containerPort: 9091
               name: metrics
               protocol: TCP
-          image: "quay.io/prophetstor/alameda-ai-dispatcher:latest"
+          image: {{.Image.AIDispatcher}}
           imagePullPolicy: IfNotPresent
           env:
             - name: ALAMEDA_AI_DISPATCHER_DATAHUB_ADDRESS

@@ -43,31 +43,16 @@ import (
 
 var log = logf.Log.WithName("controller_alamedaservice")
 
-type ComponentConfigOption func(*ComponentConfig)
-
-func WithNamespace(namespace string) ComponentConfigOption {
-	return func(cc *ComponentConfig) {
-		cc.NameSpace = namespace
-	}
-}
-func WithPodSecurityPolicyGroup(podSecurityPolicyGroup string) ComponentConfigOption {
-	return func(cc *ComponentConfig) {
-		cc.PodSecurityPolicyGroup = podSecurityPolicyGroup
-	}
-}
-func WithPodSecurityPolicyVersion(podSecurityPolicyVersion string) ComponentConfigOption {
-	return func(cc *ComponentConfig) {
-		cc.PodSecurityPolicyVersion = podSecurityPolicyVersion
-	}
-}
-
 type ComponentConfig struct {
 	NameSpace                string
 	PodSecurityPolicyGroup   string
 	PodSecurityPolicyVersion string
 
-	PodTemplateConfig   PodTemplateConfig
+	PodTemplateConfig PodTemplateConfig
+
 	FederatoraiAgentGPU FederatoraiAgentGPUConfig
+
+	Image ImageConfig
 }
 
 func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha1.AlamedaService, opts ...ComponentConfigOption) *ComponentConfig {
@@ -84,6 +69,7 @@ func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha
 		PodSecurityPolicyVersion: defaultPodSecurityPolicyVersion,
 		PodTemplateConfig:        ptc,
 		FederatoraiAgentGPU:      NewDefaultFederatoraiAgentGPUConfig(),
+		Image:                    NewDefautlImageConfig(),
 	}
 
 	for _, opt := range opts {

@@ -93,6 +93,8 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	}
 
 	return &ReconcileAlamedaService{
+		reconciledAlamedaService: make(map[string]struct{}),
+
 		client:                      mgr.GetClient(),
 		scheme:                      mgr.GetScheme(),
 		apiextclient:                apiextension.NewForConfigOrDie(mgr.GetConfig()),
@@ -145,6 +147,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 // ReconcileAlamedaService reconciles a AlamedaService object
 type ReconcileAlamedaService struct {
+
+	// reconciledAlamedaService caches alamedaservice which has been created and reconciled once
+	reconciledAlamedaService map[string]struct{}
+
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client       client.Client
@@ -241,10 +247,14 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		}
 		return reconcile.Result{}, nil
 	}
-	if flag, _ := r.checkAlamedaServiceSpecIsChange(instance, request.NamespacedName); !flag && util.Disable_operand_resource_protection == "true" {
+
+	isFirstReconciled := r.isAlamedaServiceFirstReconciled(*instance)
+	hasSpecBeenChanged, _ := r.checkAlamedaServiceSpecIsChange(instance, request.NamespacedName)
+	if !hasSpecBeenChanged && util.Disable_operand_resource_protection == "true" && !isFirstReconciled {
 		log.Info("AlamedaService spec is not changed, skip reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
 		return reconcile.Result{}, nil
 	}
+
 	asp := alamedaserviceparamter.NewAlamedaServiceParamter(instance)
 	ns, err := r.getNamespace(request.Namespace)
 	if err != nil {
@@ -252,7 +262,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 
-	componentConfig = r.newComponentConfig(ns, *instance)
+	componentConfig = r.newComponentConfig(ns, *instance, *asp)
 	resource := r.removeUnsupportedResource(*asp.GetInstallResource())
 	installResource := &resource
 	if err = r.syncCustomResourceDefinition(instance, clusterRoleGC, asp, installResource); err != nil {
@@ -422,6 +432,9 @@ func (r *ReconcileAlamedaService) handleAlamedaServiceDeletion(request reconcile
 
 	var err error
 
+	id := fmt.Sprintf(`%s/%s`, request.Namespace, request.Name)
+	delete(r.reconciledAlamedaService, id)
+
 	// Before handling, check if the AlamedaService owns the lock
 	lock, err := federatoraioperatorcontrollerutil.GetAlamedaServiceLock(context.TODO(), r.client)
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -467,10 +480,16 @@ func (r *ReconcileAlamedaService) getNamespace(namespaceName string) (corev1.Nam
 	return namespace, nil
 }
 
-func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace, alamedaService federatoraiv1alpha1.AlamedaService) *component.ComponentConfig {
+func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace, alamedaService federatoraiv1alpha1.AlamedaService, asp alamedaserviceparamter.AlamedaServiceParamter) *component.ComponentConfig {
+
+	imageConfig := newDefautlImageConfig()
+	imageConfig = setImageConfigWithAlamedaServiceParameter(imageConfig, asp)
+	imageConfig = setImageConfigWithEnv(imageConfig)
+
 	podTemplateConfig := component.NewDefaultPodTemplateConfig(namespace)
 	componentConfg := component.NewComponentConfig(podTemplateConfig, alamedaService,
 		component.WithNamespace(namespace.Name),
+		component.WithImageConfig(imageConfig),
 		component.WithPodSecurityPolicyGroup(r.podSecurityPolicesApiGroupVersion.Group),
 		component.WithPodSecurityPolicyVersion(r.podSecurityPolicesApiGroupVersion.Version),
 	)
@@ -1769,6 +1788,13 @@ func (r *ReconcileAlamedaService) checkAlamedaServiceSpecIsChange(alamedaService
 		return false, nil
 	}
 	return true, nil
+}
+
+func (r *ReconcileAlamedaService) isAlamedaServiceFirstReconciled(alamedaService federatoraiv1alpha1.AlamedaService) bool {
+	id := fmt.Sprintf(`%s/%s`, alamedaService.GetNamespace(), alamedaService.GetName())
+	_, exist := r.reconciledAlamedaService[id]
+	r.reconciledAlamedaService[id] = struct{}{}
+	return !exist
 }
 
 func (r *ReconcileAlamedaService) deleteDeploymentWhenModifyConfigMapOrService(dep *appsv1.Deployment) error {

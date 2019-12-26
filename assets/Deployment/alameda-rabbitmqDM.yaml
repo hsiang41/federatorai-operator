@@ -20,7 +20,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: rabbitmq
-        image: quay.io/prophetstor/alameda-rabbitmq:latest
+        image: {{.Image.RabbitMQ}}
         ports:
           - name: http
             protocol: TCP

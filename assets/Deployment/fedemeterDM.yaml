@@ -17,7 +17,7 @@ spec:
       spec:
         containers:
         - name: fedemeter-api
-          image: quay.io/prophetstor/fedemeter-api-ubi:v0.3.39
+          image: {{.Image.FedemeterAPI}}
           imagePullPolicy: Always
           ports:
           - name: gui-fedemeter
