@@ -100,7 +100,7 @@ func setImageConfigWithImageTag(imageConfig component.ImageConfig, imageTag stri
 		indexLastColon := strings.LastIndex(v, ":")
 		if indexLastColon != -1 {
 			if imageTag != "" {
-				v = fmt.Sprintf(`%s%s`, v[:indexLastColon], imageTag)
+				v = fmt.Sprintf(`%s:%s`, v[:indexLastColon], imageTag)
 			} else {
 				v = fmt.Sprintf(`%s`, v[:indexLastColon])
 			}

@@ -169,6 +169,17 @@ func TestSetImageConfigWithImageTag(t *testing.T) {
 				AdmissionController: "test-image-ADMISSION_CONTROLLER:test-tag",
 			},
 		},
+		testCase{
+			have: testCaseHave{
+				imageTag: "v2",
+				imageConfig: component.ImageConfig{
+					AdmissionController: "test-image-ADMISSION_CONTROLLER:v1",
+				},
+			},
+			want: component.ImageConfig{
+				AdmissionController: "test-image-ADMISSION_CONTROLLER:v2",
+			},
+		},
 	}
 
 	assert := assert.New(t)
