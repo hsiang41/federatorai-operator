@@ -93,7 +93,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	}
 
 	return &ReconcileAlamedaService{
-		reconciledAlamedaService: make(map[string]struct{}),
+		firstReconcileDoneAlamedaService: make(map[string]struct{}),
 
 		client:                      mgr.GetClient(),
 		scheme:                      mgr.GetScheme(),
@@ -149,7 +149,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 type ReconcileAlamedaService struct {
 
 	// reconciledAlamedaService caches alamedaservice which has been created and reconciled once
-	reconciledAlamedaService map[string]struct{}
+	firstReconcileDoneAlamedaService map[string]struct{}
 
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
@@ -248,7 +248,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, nil
 	}
 
-	isFirstReconciled := r.isAlamedaServiceFirstReconciled(*instance)
+	isFirstReconciled := r.isAlamedaServiceFirstReconciledDone(*instance)
 	hasSpecBeenChanged, _ := r.checkAlamedaServiceSpecIsChange(instance, request.NamespacedName)
 	if !hasSpecBeenChanged && util.Disable_operand_resource_protection == "true" && !isFirstReconciled {
 		log.Info("AlamedaService spec is not changed, skip reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
@@ -425,6 +425,9 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	log.Info("Reconciling done.", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name)
+	id := fmt.Sprintf(`%s/%s`, instance.GetNamespace(), instance.GetName())
+	r.firstReconcileDoneAlamedaService[id] = struct{}{}
+
 	return reconcile.Result{}, nil
 }
 
@@ -433,7 +436,7 @@ func (r *ReconcileAlamedaService) handleAlamedaServiceDeletion(request reconcile
 	var err error
 
 	id := fmt.Sprintf(`%s/%s`, request.Namespace, request.Name)
-	delete(r.reconciledAlamedaService, id)
+	delete(r.firstReconcileDoneAlamedaService, id)
 
 	// Before handling, check if the AlamedaService owns the lock
 	lock, err := federatoraioperatorcontrollerutil.GetAlamedaServiceLock(context.TODO(), r.client)
@@ -1790,10 +1793,9 @@ func (r *ReconcileAlamedaService) checkAlamedaServiceSpecIsChange(alamedaService
 	return true, nil
 }
 
-func (r *ReconcileAlamedaService) isAlamedaServiceFirstReconciled(alamedaService federatoraiv1alpha1.AlamedaService) bool {
+func (r *ReconcileAlamedaService) isAlamedaServiceFirstReconciledDone(alamedaService federatoraiv1alpha1.AlamedaService) bool {
 	id := fmt.Sprintf(`%s/%s`, alamedaService.GetNamespace(), alamedaService.GetName())
-	_, exist := r.reconciledAlamedaService[id]
-	r.reconciledAlamedaService[id] = struct{}{}
+	_, exist := r.firstReconcileDoneAlamedaService[id]
 	return !exist
 }
 
