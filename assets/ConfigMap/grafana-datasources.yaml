@@ -30,7 +30,8 @@ data:
                 "basicAuth": false,
                 "isDefault": false,
                 "jsonData": {
-                  "tlsSkipVerify": true
+                  "tlsSkipVerify": true,
+                  "httpMode": "POST"
                 },
                 "readOnly": false,
             },
