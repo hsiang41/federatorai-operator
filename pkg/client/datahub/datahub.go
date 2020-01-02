@@ -3,6 +3,7 @@ package datahub
 import (
 	"context"
 	"fmt"
+	"time"
 
 	datahubv1alpha1_client "github.com/containers-ai/api/alameda_api/v1alpha1/datahub"
 	datahubv1alpha1_event "github.com/containers-ai/api/alameda_api/v1alpha1/datahub/events"
@@ -17,6 +18,7 @@ import (
 // Client wraps datahub client
 type Client struct {
 	conn           *grpc.ClientConn
+	timeout        time.Duration
 	v1alpha1Client datahubv1alpha1_client.DatahubServiceClient
 	keycodesClient keycodes.KeycodesServiceClient
 }
@@ -29,6 +31,7 @@ func NewDatahubClient(config Config) Client {
 	keycodesClient := keycodes.NewKeycodesServiceClient(conn)
 	return Client{
 		conn:           conn,
+		timeout:        config.Timeout,
 		v1alpha1Client: v1alpha1Client,
 		keycodesClient: keycodesClient,
 	}
@@ -47,7 +50,8 @@ func (d *Client) Close() error {
 // CreateEvents creates events to Alameda-Datahub
 func (d *Client) CreateEvents(events []*datahubv1alpha1_event.Event) error {
 
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	defer cancel()
 	req := datahubv1alpha1_event.CreateEventsRequest{
 		Events: events,
 	}
@@ -64,7 +68,8 @@ func (d *Client) CreateEvents(events []*datahubv1alpha1_event.Event) error {
 // ListKeycodes lists keycode from Alameda-Datahub
 func (d *Client) ListKeycodes() ([]*keycodes.Keycode, error) {
 
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	defer cancel()
 	req := keycodes.ListKeycodesRequest{}
 	resp, err := d.keycodesClient.ListKeycodes(ctx, &req)
 	if err != nil {
@@ -78,7 +83,8 @@ func (d *Client) ListKeycodes() ([]*keycodes.Keycode, error) {
 
 // AddKeycode adds keycode to Alameda-Datahub
 func (d *Client) AddKeycode(keycode string) error {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	defer cancel()
 	req := keycodes.AddKeycodeRequest{
 		Keycode: keycode,
 	}
@@ -94,7 +100,8 @@ func (d *Client) AddKeycode(keycode string) error {
 
 // ActivateRegistrationData activates signature data to Alameda-Datahub
 func (d *Client) ActivateRegistrationData(signatureData string) error {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	defer cancel()
 	req := keycodes.ActivateRegistrationDataRequest{
 		Data: signatureData,
 	}
@@ -111,7 +118,8 @@ func (d *Client) ActivateRegistrationData(signatureData string) error {
 // GenerateRegistrationData generates registration data from Alameda-Datahub
 func (d *Client) GenerateRegistrationData() (string, error) {
 
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	defer cancel()
 	req := empty.Empty{}
 	resp, err := d.keycodesClient.GenerateRegistrationData(ctx, &req)
 	if err != nil {
@@ -126,7 +134,8 @@ func (d *Client) GenerateRegistrationData() (string, error) {
 // DeleteKeycode delete keycode from Alameda-Datahub
 func (d *Client) DeleteKeycode(keycode string) error {
 
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	defer cancel()
 	req := keycodes.DeleteKeycodeRequest{
 		Keycode: keycode,
 	}
@@ -143,7 +152,8 @@ func (d *Client) DeleteKeycode(keycode string) error {
 // GetKeycodeDetail get keycode detail from Alameda-Datahub
 func (d *Client) GetKeycodeDetail(keycode string) (keycodes.Keycode, error) {
 
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	defer cancel()
 	req := keycodes.ListKeycodesRequest{
 		Keycodes: []string{keycode},
 	}
