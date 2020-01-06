@@ -11,6 +11,7 @@
 #       [-f future data point (hour)] # Run preloader future mode
 #       [-d] # Disable & Remove preloader
 #       [-v] # Revert environment to normal mode
+#       [-n nginx_prefix_name] # Specify nginx prefix name (optional)
 #       [-h] # Display script usage
 #
 #################################################################################################################
@@ -27,6 +28,7 @@ show_usage()
         [-f future data point (hour)] # Run preloader future mode
         [-d] # Disable & Remove preloader
         [-v] # Revert environment to normal mode
+        [-n nginx_prefix_name] # Specify nginx prefix name (optional)
         [-h] # Display script usage
 
 __EOF__
@@ -494,8 +496,133 @@ new_nginx_example()
     else
         if [ "$openshift_minor_version" != "" ]; then
             # OpenShift
+            nginx_openshift_yaml="nginx_openshift.yaml"
+            cat > ${nginx_openshift_yaml} << __EOF__
+{
+    "kind": "List",
+    "apiVersion": "v1",
+    "metadata": {},
+    "items": [
+        {
+            "apiVersion": "apps.openshift.io/v1",
+            "kind": "DeploymentConfig",
+            "metadata": {
+                "labels": {
+                    "app": "${nginx_name}"
+                },
+                "name": "${nginx_name}"
+            },
+            "spec": {
+                "replicas": 1,
+                "selector": {
+                    "app": "${nginx_name}",
+                    "deploymentconfig": "${nginx_name}"
+                },
+                "strategy": {
+                    "resources": {},
+                    "rollingParams": {
+                        "intervalSeconds": 1,
+                        "maxSurge": "25%",
+                        "maxUnavailable": "25%",
+                        "timeoutSeconds": 600,
+                        "updatePeriodSeconds": 1
+                    },
+                    "type": "Rolling"
+                },
+                "template": {
+                    "metadata": {
+                        "labels": {
+                            "app": "${nginx_name}",
+                            "deploymentconfig": "${nginx_name}"
+                        }
+                    },
+                    "spec": {
+                        "containers": [
+                            {
+                                "image": "twalter/openshift-nginx:stable-alpine",
+                                "imagePullPolicy": "Always",
+                                "name": "nginx",
+                                "ports": [
+                                    {
+                                        "containerPort": 8081,
+                                        "protocol": "TCP"
+                                    }
+                                ],
+                                "resources":
+                                {
+                                    "limits":
+                                        {
+                                        "cpu": "250m",
+                                        "memory": "150Mi"
+                                        },
+                                    "requests":
+                                        {
+                                        "cpu": "100m",
+                                        "memory": "50Mi"
+                                        }
+                                },
+                                "terminationMessagePath": "/dev/termination-log"
+                            }
+                        ],
+                        "dnsPolicy": "ClusterFirst",
+                        "restartPolicy": "Always",
+                        "securityContext": {},
+                        "terminationGracePeriodSeconds": 30
+                    }
+                },
+                "triggers": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "labels": {
+                    "app": "${nginx_name}"
+                },
+                "name": "${nginx_name}"
+            },
+            "spec": {
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 8081,
+                        "protocol": "TCP",
+                        "targetPort": 8081
+                    }
+                ],
+                "selector": {
+                    "app": "${nginx_name}",
+                    "deploymentconfig": "${nginx_name}"
+                }
+            }
+        },
+        {
+            "apiVersion": "route.openshift.io/v1",
+            "kind": "Route",
+            "metadata": {
+                "labels": {
+                    "app": "${nginx_name}"
+                },
+                "name": "${nginx_name}"
+            },
+            "spec": {
+                "port": {
+                    "targetPort": 8081
+                },
+                "to": {
+                    "kind": "Service",
+                    "name": "${nginx_name}"
+                },
+                "weight": 100,
+                "wildcardPolicy": "None"
+            }
+        }
+    ]
+}
+__EOF__
             oc new-project $nginx_ns
-            oc new-app twalter/openshift-nginx:stable --name nginx-stable
+            oc apply -f ${nginx_openshift_yaml}
             if [ "$?" != "0" ]; then
                 echo -e "\n$(tput setaf 1)Error! create NGINX app failed.$(tput sgr 0)"
                 leave_prog
@@ -511,23 +638,30 @@ new_nginx_example()
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: ${nginx_name}
   namespace: ${nginx_ns}
   labels:
-     app: nginx-stable
+     app: ${nginx_name}
 spec:
   selector:
     matchLabels:
-      app: nginx-stable
+      app: ${nginx_name}
   replicas: 1
   template:
     metadata:
       labels:
-        app: nginx-stable
+        app: ${nginx_name}
     spec:
       containers:
       - name: nginx
         image: nginx:1.7.9
+        resources:
+            limits:
+                memory: "250Mi"
+                cpu: "100m"
+            requests:
+                memory: "150Mi"
+                cpu: "50m"
         ports:
         - containerPort: 80
 __EOF__
@@ -568,7 +702,7 @@ spec:
         type: vpa
     selector:
         matchLabels:
-            app: nginx-stable
+            app: ${nginx_name}
 __EOF__
         kubectl apply -f ${nginx_alamedascaler_file}
         if [ "$?" != "0" ]; then
@@ -748,7 +882,7 @@ if [ "$#" -eq "0" ]; then
     exit
 fi
 
-while getopts "f:ecpvrdh" o; do
+while getopts "f:ecpvrdhn:" o; do
     case "${o}" in
         p)
             prepare_environment="y"
@@ -765,6 +899,10 @@ while getopts "f:ecpvrdh" o; do
         f)
             future_mode_enabled="y"
             f_arg=${OPTARG}
+            ;;
+        n)
+            nginx_name_specified="y"
+            n_arg=${OPTARG}
             ;;
         d)
             disable_preloader="y"
@@ -788,6 +926,13 @@ if [ "$future_mode_enabled" = "y" ]; then
         ''|*[!0-9]*) echo -e "\n$(tput setaf 1)future mode length (hour) needs to be integer.$(tput sgr 0)" && show_usage ;;
         *) ;;
     esac
+fi
+
+if [ "$nginx_name_specified" = "y" ]; then
+    nginx_name=$n_arg
+    if [ "$nginx_name" = "" ]; then
+        echo -e "\n$(tput setaf 1)nginx name needs to be specified with n parameter.$(tput sgr 0)"
+    fi
 fi
 
 kubectl version|grep -q "^Server"
@@ -816,6 +961,10 @@ fi
 
 file_folder="/tmp/preloader"
 nginx_ns="nginx-preloader-sample"
+if [ "$nginx_name" = "" ]; then
+    nginx_name="nginx-stable"
+fi
+
 debug_log="debug.log"
 
 rm -rf $file_folder
