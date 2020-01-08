@@ -33,6 +33,10 @@ spec:
     JSONPath: .spec.version
     name: Version
     type: string
+  - description: The URL of prometheus
+    JSONPath: .spec.prometheusService
+    name: PROMETHEUS
+    type: string
   - JSONPath: .metadata.creationTimestamp
     description: The time of creation
     name: Age
