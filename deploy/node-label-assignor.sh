@@ -2,9 +2,20 @@
 
 #################################################################################################################
 #
-#   This script is created for assign node label for cost analysis function (lab usage)
+#   This script is created for assign node label for cost analysis function
 #
 #################################################################################################################
+
+show_usage()
+{
+    cat << __EOF__
+
+    Usage:
+        -f <space> label file full path [e.g., -f /tmp/label_file]
+
+__EOF__
+    exit 1
+}
 
 check_version()
 {
@@ -52,11 +63,10 @@ check_version()
 
 assign_label_to_each_nodes()
 {
-
-    while read node_name node_status node_role others
+    while read node_name node_role instance_type availability_zone instance_id others
     do
         echo -e "\n$(tput setaf 6)Starting label $node_name : $node_role node ...$(tput sgr 0)"
-        if [ "$node_name" = "" ] || [ "$node_role" = "" ]; then
+        if [ "$node_name" = "" ] || [ "$node_role" = "" ] || [ "$instance_type" = "" ] || [ "$availability_zone" = "" ] || [ "$instance_id" = "" ]; then
            continue
         fi
 
@@ -66,14 +76,51 @@ assign_label_to_each_nodes()
                 kubectl label --overwrite node $node_name node-role.kubernetes.io/master=""
             fi
         fi
-
-        kubectl label node $node_name beta.kubernetes.io/instance-type=c5.xlarge
-        kubectl label node $node_name failure-domain.beta.kubernetes.io/region=us-west-2
-        kubectl label node $node_name failure-domain.beta.kubernetes.io/zone=us-west-2a
-        kubectl patch nodes $node_name --type merge --patch '{"spec":{"providerID": "aws:///us-west-2a/i-0b186a4958f5f8576"}}'
+        region="`echo $availability_zone|sed 's/.$//'`"
+        kubectl label --overwrite node $node_name beta.kubernetes.io/instance-type=$instance_type
+        kubectl label --overwrite node $node_name failure-domain.beta.kubernetes.io/region=$region
+        kubectl label --overwrite node $node_name failure-domain.beta.kubernetes.io/zone=$availability_zone
+        kubectl patch nodes $node_name --type merge --patch "{\"spec\":{\"providerID\": \"aws:///us-west-2a/$instance_id\"}}"
         echo "Done"
-    done <<< "$(kubectl get nodes|grep -v STATUS)"
+    done <<< "$(cat $label_file)"
 }
+
+if [ "$#" -eq "0" ]; then
+    show_usage
+    exit
+fi
+
+while getopts "f:h" o; do
+    case "${o}" in
+        f)
+            label_file_enabled="y"
+            label_file=${OPTARG}
+            ;;
+        h)
+            show_usage
+            exit
+            ;;
+        *)
+            echo -e "\n$(tput setaf 1)Error! wrong paramter.$(tput sgr 0)"
+            show_usage
+            exit 5
+    esac
+done
+
+[ "$label_file_enabled" = "" ] && label_file_enabled="n"
+
+if [ "$label_file_enabled" = "y" ]; then
+    if [ "$label_file" = "" ]; then
+        echo -e "\n$(tput setaf 1)Error! Missing label file path value$(tput sgr 0)"
+        show_usage
+        exit
+    fi
+
+    if [ ! -f "$label_file" ]; then
+        echo -e "\n$(tput setaf 1)Error! label file doesn't exist, please check file path value.$(tput sgr 0)"
+        exit
+    fi
+fi
 
 kubectl version|grep -q "^Server"
 if [ "$?" != "0" ];then
@@ -85,6 +132,8 @@ echo "Checking environment version..."
 check_version
 echo "...Passed"
 
-assign_label_to_each_nodes
+if [ "$label_file_enabled" = "y" ]; then
+    assign_label_to_each_nodes
+fi
 
 exit 0
