@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/pkg/apis/autoscaling/v1alpha1"
+	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/api/v1alpha1"
 	fedOperator "github.com/containers-ai/federatorai-operator"
 	assets "github.com/containers-ai/federatorai-operator/assets"
 	"github.com/containers-ai/federatorai-operator/cmd/upgrader"

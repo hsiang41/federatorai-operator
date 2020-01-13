@@ -103,3 +103,7 @@ version="v1.4.7"
 [[constraint]]
   branch = "master"
   name = "github.com/influxdata/influxdb1-client"
+
+[[constraint]]
+  name = "github.com/containers-ai/api"
+  branch = "master"

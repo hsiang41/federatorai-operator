@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/pkg/apis/autoscaling/v1alpha1"
+	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/api/v1alpha1"
 	federatoraiv1alpha1 "github.com/containers-ai/federatorai-operator/pkg/apis/federatorai/v1alpha1"
 	"github.com/containers-ai/federatorai-operator/pkg/component"
 	federatoraioperatorcontrollerutil "github.com/containers-ai/federatorai-operator/pkg/controller/util"

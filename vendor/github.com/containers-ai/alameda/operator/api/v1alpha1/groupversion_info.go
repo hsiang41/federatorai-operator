@@ -17,30 +17,26 @@ limitations under the License.
 // NOTE: Boilerplate only.  Ignore this file.
 
 // Package v1alpha1 contains API Schema definitions for the autoscaling v1alpha1 API group
-// +k8s:openapi-gen=true
-// +k8s:deepcopy-gen=package,register
-// +k8s:conversion-gen=github.com/containers-ai/alameda/operator/pkg/apis/autoscaling
-// +k8s:defaulter-gen=TypeMeta
+// +kubebuilder:object:generate=true
 // +groupName=autoscaling.containers.ai
 package v1alpha1
 
 import (
+	logUtil "github.com/containers-ai/alameda/pkg/utils/log"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 var (
-	// SchemeGroupVersion is group version used to register these objects
-	SchemeGroupVersion = schema.GroupVersion{Group: "autoscaling.containers.ai", Version: "v1alpha1"}
+
+	// GroupVersion is group version used to register these objects
+	GroupVersion = schema.GroupVersion{Group: "autoscaling.containers.ai", Version: "v1alpha1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
-	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}
+	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
 
-	// AddToScheme is required by pkg/client/...
+	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
-)
 
-// Resource is required by pkg/client/listers/...
-func Resource(resource string) schema.GroupResource {
-	return SchemeGroupVersion.WithResource(resource).GroupResource()
-}
+	scope = logUtil.RegisterScope("autoscaling_api_v1alpha1", "autoscaling api v1alpha1", 0)
+)

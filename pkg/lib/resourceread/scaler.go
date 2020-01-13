@@ -1,7 +1,7 @@
 package resourceread
 
 import (
-	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/pkg/apis/autoscaling/v1alpha1"
+	autoscaling_v1alpha1 "github.com/containers-ai/alameda/operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
@@ -18,7 +18,7 @@ func init() {
 }
 
 func ReadScalerV1(objBytes []byte) *autoscaling_v1alpha1.AlamedaScaler {
-	requiredObj, err := runtime.Decode(scalerCodecs.UniversalDecoder(autoscaling_v1alpha1.SchemeGroupVersion), objBytes)
+	requiredObj, err := runtime.Decode(scalerCodecs.UniversalDecoder(autoscaling_v1alpha1.GroupVersion), objBytes)
 	if err != nil {
 		log.Error(err, "Fail to ReadScalerV1OrDie")
 

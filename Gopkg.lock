@@ -35,12 +35,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:12f3083f563b99987bd39ffca13dbc5c04f64c731dd0afd384df5c37be869b4e"
+  digest = "1:e1e7ad502da821f8742a9cea53121aafea0ec154bb2cd3c0b547d2160a77d51f"
   name = "github.com/containers-ai/alameda"
   packages = [
     "admission-controller",
     "admission-controller/pkg/service",
-    "operator/pkg/apis/autoscaling/v1alpha1",
+    "operator/api",
+    "operator/api/v1alpha1",
+    "operator/api/validate",
     "operator/pkg/utils",
     "pkg/consts",
     "pkg/framework/datahub",
@@ -49,11 +51,11 @@
     "pkg/utils/log",
   ]
   pruneopts = "UT"
-  revision = "08b5d524a3c706fb7085a2fb83cc715378273cfd"
+  revision = "370fbf66e80cf812af0a208f158b2879195153f5"
 
 [[projects]]
   branch = "master"
-  digest = "1:7d9f3de20b3e213b5fd8e30a7d09ccc685c5fdd9fee215fc8c8a2f36288f2286"
+  digest = "1:4a7e159e128a061c60eaf6e59dbd677489687cb9cde78c93a9a27e9318456eed"
   name = "github.com/containers-ai/api"
   packages = [
     "alameda_api/v1alpha1/datahub",
@@ -73,7 +75,7 @@
     "datahub/keycodes",
   ]
   pruneopts = "NT"
-  revision = "45ffb581ad63cfc538757b7922f77a5e57f3544e"
+  revision = "7b60172c85622e5359791d9b0a52692c57843e4d"
 
 [[projects]]
   digest = "1:221a3d12fab137988ce057aabf120f77bc90e6e6a3ae6e5805f8be4534bd8024"
@@ -1122,6 +1124,8 @@
   digest = "1:fdf6c6bbb39a27ec36f40aefa6dd3be37475210bbac2a808ddd7cc84715664f8"
   name = "sigs.k8s.io/controller-runtime"
   packages = [
+    ".",
+    "pkg/builder",
     "pkg/cache",
     "pkg/cache/internal",
     "pkg/client",
@@ -1129,6 +1133,7 @@
     "pkg/client/config",
     "pkg/controller",
     "pkg/controller/controllerutil",
+    "pkg/conversion",
     "pkg/event",
     "pkg/handler",
     "pkg/healthz",
@@ -1154,6 +1159,7 @@
     "pkg/source/internal",
     "pkg/webhook",
     "pkg/webhook/admission",
+    "pkg/webhook/conversion",
     "pkg/webhook/internal/certwatcher",
     "pkg/webhook/internal/metrics",
   ]
@@ -1174,7 +1180,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/containers-ai/alameda/admission-controller",
-    "github.com/containers-ai/alameda/operator/pkg/apis/autoscaling/v1alpha1",
+    "github.com/containers-ai/alameda/operator/api/v1alpha1",
     "github.com/containers-ai/alameda/pkg/utils/kubernetes",
     "github.com/containers-ai/api/alameda_api/v1alpha1/datahub",
     "github.com/containers-ai/api/alameda_api/v1alpha1/datahub/events",
@@ -1209,6 +1215,7 @@
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/extensions/v1beta1",
+    "k8s.io/api/policy/v1beta1",
     "k8s.io/api/rbac/v1",
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",

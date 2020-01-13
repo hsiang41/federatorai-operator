@@ -312,7 +312,7 @@ func (m *ListPodsRequest) GetKind() Kind {
 	if m != nil {
 		return m.Kind
 	}
-	return Kind_POD
+	return Kind_KIND_UNDEFINED
 }
 
 func (m *ListPodsRequest) GetScalingTool() ScalingTool {
@@ -422,7 +422,7 @@ func (m *ListControllersRequest) GetKind() Kind {
 	if m != nil {
 		return m.Kind
 	}
-	return Kind_POD
+	return Kind_KIND_UNDEFINED
 }
 
 type ListControllersResponse struct {
@@ -910,7 +910,7 @@ func (m *DeleteControllersRequest) GetKind() Kind {
 	if m != nil {
 		return m.Kind
 	}
-	return Kind_POD
+	return Kind_KIND_UNDEFINED
 }
 
 type DeleteApplicationsRequest struct {
