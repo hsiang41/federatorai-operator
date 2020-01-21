@@ -5,16 +5,15 @@ import (
 	"time"
 
 	"github.com/containers-ai/federatorai-operator/pkg/processcrdspec/alamedaserviceparamter"
-	"github.com/containers-ai/federatorai-operator/pkg/util"
 	"github.com/pkg/errors"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextclientv1beta1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -51,27 +50,16 @@ func ApplyCustomResourceDefinition(client apiextclientv1beta1.CustomResourceDefi
 		return actual, err
 	} else if err == nil {
 		log.Info("Found CRD", "CustomResourceDefinition.Name", required.Name)
-		if asp.CheckCurrentCRDIsChangeVersion() && cluster.Name == util.AlamedaScalerName { //if user change scaler CRD version (component version change)
-			cluster.Spec = required.Spec //replace crd spec
-			if err := controllerutil.SetControllerReference(gcIns, cluster, scheme); err != nil {
-				return nil, errors.Errorf("Fail resourceCRD SetControllerReference: %s", err.Error())
-			}
-			actual, err := client.CustomResourceDefinitions().Update(cluster)
-			if err != nil {
-				return nil, errors.Wrapf(err, "update CustomResourceDefinition %s failed", required.Name)
-			}
-			asp.SetCurrentCRDChangeVersionToFalse()
-			log.Info("change CRD Version", "CustomResourceDefinition.Name", required.Name)
-			return actual, err
-		} else {
-			if err := controllerutil.SetControllerReference(gcIns, cluster, scheme); err != nil {
-				return nil, errors.Errorf("Fail resourceCRD SetControllerReference: %s", err.Error())
-			}
-			_, err := client.CustomResourceDefinitions().Update(cluster)
-			if err != nil {
-				return nil, errors.Wrapf(err, "update CustomResourceDefinition %s failed", required.Name)
-			}
+		cluster.Spec = required.Spec //replace crd spec
+		if err := controllerutil.SetControllerReference(gcIns, cluster, scheme); err != nil {
+			return nil, errors.Errorf("Fail resourceCRD SetControllerReference: %s", err.Error())
 		}
+		actual, err := client.CustomResourceDefinitions().Update(cluster)
+		if err != nil {
+			return nil, errors.Wrapf(err, "update CustomResourceDefinition %s failed", required.Name)
+		}
+		log.Info("change CRD Version", "CustomResourceDefinition.Name", required.Name)
+		return actual, err
 	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "apply CustomResourceDefinition %s failed", required.Name)
