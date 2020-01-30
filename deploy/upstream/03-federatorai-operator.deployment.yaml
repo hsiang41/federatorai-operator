@@ -65,7 +65,7 @@ spec:
             - name: RELATED_IMAGE_AI_ENGINE
               value: quay.io/prophetstor/alameda-ai:latest
             - name: RELATED_IMAGE_ALPINE
-              value: quay.io/prophetstor/federatorai-tool:v0.9.6
+              value: quay.io/prophetstor/federatorai-tool:v0.9.7
             - name: RELATED_IMAGE_ANALYZER
               value: quay.io/prophetstor/alameda-analyzer-ubi:latest
             - name: RELATED_IMAGE_DATAHUB
