@@ -434,7 +434,7 @@ done
 
 # Modify federator.ai operator yaml(s)
 # for tag
-sed -i "s/ubi:latest/ubi:${tag_number}/g" 03*.yaml
+sed -i "s/:latest$/:${tag_number}/g" 03*.yaml
 if [ "$need_upgrade" = "y" ];then
     # for upgrade - stop operator before applying new alamedaservice
     sed -i "s/replicas: 1/replicas: 0/g" 03*.yaml
