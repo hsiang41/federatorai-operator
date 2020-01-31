@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: federatorai-dashboard-backend-config
+  namespace: {{.NameSpace}}
+data:
+  config.json: |-
+    {
+      "development": {
+        "config_id": "development"
+      },
+      "testing": {
+        "config_id": "testing"
+      },
+      "staging": {
+        "config_id": "staging"
+      },
+      "production": {
+        "config_id": "production"
+      },
+      "influxdb": {
+        "url": "alameda-influxdb.{{.NameSpace}}",
+        "port": "8086",
+        "protocol": "https",
+        "username": "admin",
+        "password": "adminpass",
+        "options": {
+          "ssl": "-unsafeSsl"
+        }
+      },
+      "promql": {
+        "url": "prometheus-k8s-0.prometheus-operated.openshift-monitoring",
+        "port": 9091,
+        "protocol": "https",
+        "prefix": "api/v1/query?query=",
+        "rangeprefix": "api/v1/query_range",
+        "username": "internal",
+        "password": ""
+      },
+      "restapi": {
+        "url": "federatorai-rest.{{.NameSpace}}:5055",
+        "prefix": "apis/v1",
+        "protocol": "http"
+      }
+    }

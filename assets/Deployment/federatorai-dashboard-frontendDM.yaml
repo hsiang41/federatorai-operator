@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: federatorai-dashboard-frontend
+  namespace: {{.NameSpace}}
+  labels:
+    app: alameda
+    component: federatorai-dashboard-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alameda
+      component: federatorai-dashboard-frontend
+  template:
+    metadata:
+      labels:
+        app: alameda
+        component: federatorai-dashboard-frontend
+    spec:
+      volumes:
+      - name: federatorai-dashboard-frontend-data-storage
+      - name: federatorai-dashboard-frontend-log-storage
+      containers:
+        - name: federatorai-dashboard-frontend
+          ports:
+            - containerPort: 9000
+              protocol: TCP
+          image: {{.Image.DashboardFrontend}}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: FEDERATORAI_DASHBOARD_FRONTEND_PORT
+              value: "9000"
+            - name: FEDERATORAI_DASHBOARD_BACKEND_URL
+              value: "http://federatorai-dashboard-backend.{{.NameSpace}}.svc:8081"
+          resources:
+            {}
+          readinessProbe:
+            exec:
+              command:
+              - /probe.sh
+              - --type=readiness
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+              - /probe.sh
+              - --type=liveness
+            initialDelaySeconds: 5
+            periodSeconds: 5

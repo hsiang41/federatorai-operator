@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    component: federatorai-dashboard-frontend
+  name: federatorai-dashboard-frontend
+  namespace: {{.NameSpace}}
+spec:
+  port:
+    targetPort: listen-port
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: federatorai-dashboard-frontend

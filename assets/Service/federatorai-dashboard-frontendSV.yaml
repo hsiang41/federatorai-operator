@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: federatorai-dashboard-frontend
+  name: federatorai-dashboard-frontend
+  namespace: {{.NameSpace}}
+spec:
+  selector:
+    component: federatorai-dashboard-frontend
+  ports:
+  - port: 9000
+    name: "listen-port"

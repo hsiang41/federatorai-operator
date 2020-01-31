@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: federatorai-dashboard-backend
+  name: federatorai-dashboard-backend
+  namespace: {{.NameSpace}}
+spec:
+  selector:
+    component: federatorai-dashboard-backend
+  ports:
+  - port: 8081
