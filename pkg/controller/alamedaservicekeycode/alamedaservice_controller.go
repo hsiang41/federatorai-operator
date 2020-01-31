@@ -47,7 +47,7 @@ var (
 	log                                      = logf.Log.WithName("controller_alamedaservicekeycode")
 	requeueDuration                          = 30 * time.Second
 	keycodeSpecialCases                      = []string{
-		"GRV7JLA4TXKPPITS6GRSNK4EBILFRQ",
+		"D3JXNLIFTQKQEZ3WZBNIDA3WZA7HKQ",
 	}
 )
 

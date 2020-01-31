@@ -52,7 +52,7 @@ metadata:
   namespace: federatorai
 spec:
   keycode:
-    codeNumber: GRV7J-LA4TX-KPPIT-S6GRS-NK4EB-ILFRQ		## default trial keycode
+    codeNumber: D3JXN-LIFTQ-KQEZ3-WZBNI-DA3WZ-A7HKQ		## default trial keycode
   selfDriving: false            ## to enable resource self-orchestration of the deployed Federator.ai components
                                 ## it is recommended NOT to use ephemeral data storage for Alameda influxdb component when self-Driving is enabled	
   enableExecution: true
