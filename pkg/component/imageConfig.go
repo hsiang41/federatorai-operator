@@ -21,6 +21,8 @@ const (
 	defaultImageFederatoraiAgent          = "quay.io/prophetstor/federatorai-agent-ubi:v4.2.259"
 	defaultImageFederatoraiRestAPI        = "quay.io/prophetstor/federatorai-rest-ubi:v4.2.504"
 	defaultImageFedemeterInfluxdb         = "quay.io/prophetstor/fedemeter-influxdb:v0.3.39"
+	defaultImageFrontend                  = "quay.io/prophetstor/federatorai-dashboard-frontend:v4.2.702"
+	defaultImageBackend                   = "quay.io/prophetstor/federatorai-dashboard-backend:v4.2.702"
 )
 
 type ImageConfig struct {
@@ -44,6 +46,8 @@ type ImageConfig struct {
 	FederatoraiAgent          string
 	FederatoraiRestAPI        string
 	FedemeterInfluxDB         string
+	DashboardFrontend         string
+	DashboardBackend          string
 }
 
 // NewDefautlImageConfig returns ImageConfig with default value
@@ -69,6 +73,8 @@ func NewDefautlImageConfig() ImageConfig {
 		FederatoraiAgent:          defaultImageFederatoraiAgent,
 		FederatoraiRestAPI:        defaultImageFederatoraiRestAPI,
 		FedemeterInfluxDB:         defaultImageFedemeterInfluxdb,
+		DashboardFrontend:         defaultImageFrontend,
+		DashboardBackend:          defaultImageBackend,
 	}
 }
 
@@ -170,4 +176,14 @@ func (i *ImageConfig) SetFederatoraiRestAPI(image string) {
 // SetFedemeterInfluxdb sets image to imageConfig
 func (i *ImageConfig) SetFedemeterInfluxdb(image string) {
 	i.FedemeterInfluxDB = image
+}
+
+// SetFrontEnd sets image to imageConfig
+func (i *ImageConfig) SetFrontend(image string) {
+	i.DashboardFrontend = image
+}
+
+// SetBackEnd sets image to imageConfig
+func (i *ImageConfig) SetBackend(image string) {
+	i.DashboardBackend = image
 }

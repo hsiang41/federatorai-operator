@@ -112,6 +112,16 @@ func SectionSetParamterToDeployment(dep *appsv1.Deployment, asp *alamedaservicep
 		util.SetImagePullPolicy(dep, util.FederatoraiAgentPreloaderCTN, asp.FederatoraiAgentPreloaderSectionSet.ImagePullPolicy)
 		util.SetStorageToVolumeSource(dep, asp.FederatoraiAgentPreloaderSectionSet.Storages, "federatorai-agent-preloader-type.pvc", util.AlamedaGroup)
 		util.SetStorageToMountPath(dep, asp.FederatoraiAgentPreloaderSectionSet.Storages, util.FederatoraiAgentPreloaderCTN, "federatorai-agent-preloader-type-storage", util.AlamedaGroup)
+	case util.FederatoraiFrontendDPN:
+		envVars = asp.FederatoraiFrontendSectionSet.EnvVars
+		util.SetImagePullPolicy(dep, util.FederatoraiFrontendCTN, asp.FederatoraiFrontendSectionSet.ImagePullPolicy)
+		util.SetStorageToVolumeSource(dep, asp.FederatoraiFrontendSectionSet.Storages, "federatorai-frontend-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.FederatoraiFrontendSectionSet.Storages, util.FederatoraiFrontendCTN, "federatorai-frontend-type-storage", util.AlamedaGroup)
+	case util.FederatoraiBackendDPN:
+		envVars = asp.FederatoraiBackendSectionSet.EnvVars
+		util.SetImagePullPolicy(dep, util.FederatoraiBackendCTN, asp.FederatoraiBackendSectionSet.ImagePullPolicy)
+		util.SetStorageToVolumeSource(dep, asp.FederatoraiBackendSectionSet.Storages, "federatorai-backend-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.FederatoraiBackendSectionSet.Storages, util.FederatoraiBackendCTN, "federatorai-backend-type-storage", util.AlamedaGroup)
 	}
 
 	for i, container := range dep.Spec.Template.Spec.Containers {
@@ -210,6 +220,14 @@ func SectionSetParamterToPersistentVolumeClaim(pvc *corev1.PersistentVolumeClaim
 		case fmt.Sprintf("federatorai-rest-%s.pvc", pvcusage):
 			{
 				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiRestSectionSet.Storages, pvcusage)
+			}
+		case fmt.Sprintf("federatorai-frontend-%s.pvc", pvcusage):
+			{
+				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiFrontendSectionSet.Storages, pvcusage)
+			}
+		case fmt.Sprintf("federatorai-backend-%s.pvc", pvcusage):
+			{
+				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiBackendSectionSet.Storages, pvcusage)
 			}
 		}
 	}

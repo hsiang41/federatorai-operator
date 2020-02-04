@@ -57,6 +57,8 @@ type AlamedaServiceSpec struct {
 	FederatoraiAgentGPUSectionSet       FederatoraiAgentGPUSpec `json:"federatoraiAgentGPU"`
 	FederatoraiRestSectionSet           AlamedaComponentSpec    `json:"federatoraiRest"`
 	FederatoraiAgentPreloaderSectionSet AlamedaComponentSpec    `json:"federatoraiAgentPreloader"`
+	FederatoraiFrontendSectionSet       AlamedaComponentSpec    `json:"federatoraiFrontend"`
+	FederatoraiBackendSectionSet        AlamedaComponentSpec    `json:"federatoraiBackend"`
 }
 
 type AlamedaComponentSpec struct {

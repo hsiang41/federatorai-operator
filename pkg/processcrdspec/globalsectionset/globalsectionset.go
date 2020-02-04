@@ -103,6 +103,12 @@ func GlobalSectionSetParamterToDeployment(dep *appsv1.Deployment, asp *alamedase
 	case util.FederatoraiAgentPreloaderDPN:
 		util.SetStorageToVolumeSource(dep, asp.Storages, "federatorai-agent-preloader-type.pvc", util.AlamedaGroup)
 		util.SetStorageToMountPath(dep, asp.Storages, util.FederatoraiAgentPreloaderCTN, "federatorai-agent-preloader-type-storage", util.AlamedaGroup)
+	case util.FederatoraiFrontendDPN:
+		util.SetStorageToVolumeSource(dep, asp.Storages, "federatorai-frontend-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.FederatoraiFrontendCTN, "federatorai-frontend-type-storage", util.AlamedaGroup)
+	case util.FederatoraiBackendDPN:
+		util.SetStorageToVolumeSource(dep, asp.Storages, "federatorai-backend-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.FederatoraiBackendCTN, "federatorai-backend-type-storage", util.AlamedaGroup)
 
 	}
 

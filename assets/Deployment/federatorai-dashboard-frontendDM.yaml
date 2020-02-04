@@ -49,3 +49,6 @@ spec:
               - --type=liveness
             initialDelaySeconds: 5
             periodSeconds: 5
+      volumes:
+      - name:  federatorai-frontend-data-storage
+      - name:  federatorai-frontend-log-storage

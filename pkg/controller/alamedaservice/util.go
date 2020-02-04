@@ -36,6 +36,8 @@ var (
 		"RELATED_IMAGE_FEDERATORAI_AGENT",
 		"RELATED_IMAGE_FEDERATORAI_RESTAPI",
 		"RELATED_IMAGE_FEDEMETER_INFLUXDB",
+		"RELATED_IMAGE_FEDERATORAI_DASHBOARD_FRONTEND",
+		"RELATED_IMAGE_FEDERATORAI_DASHBOARD_BACKEND",
 	}
 	imageLocationImmutableFields = map[string]struct{}{
 		"InfluxDB": struct{}{},
@@ -200,7 +202,12 @@ func setImageConfigWithAlamedaServiceParameter(imageConfig component.ImageConfig
 	if image := asp.FederatoraiAgentPreloaderSectionSet.Image; image != "" {
 		imageConfig.SetFederatoraiAgentPreloader(image)
 	}
-
+	if image := asp.FederatoraiFrontendSectionSet.Image; image != "" {
+		imageConfig.SetFrontend(image)
+	}
+	if image := asp.FederatoraiBackendSectionSet.Image; image != "" {
+		imageConfig.SetBackend(image)
+	}
 	return imageConfig
 }
 
@@ -288,7 +295,16 @@ func setImageConfigWithEnv(imageConfig component.ImageConfig) component.ImageCon
 			if value := os.Getenv("RELATED_IMAGE_FEDEMETER_INFLUXDB"); value != "" {
 				imageConfig.SetFedemeterInfluxdb(value)
 			}
+		case "RELATED_IMAGE_FEDERATORAI_DASHBOARD_FRONTEND":
+			if value := os.Getenv("RELATED_IMAGE_FEDERATORAI_DASHBOARD_FRONTEND"); value != "" {
+				imageConfig.SetFrontend(value)
+			}
+		case "RELATED_IMAGE_FEDERATORAI_DASHBOARD_BACKEND":
+			if value := os.Getenv("RELATED_IMAGE_FEDERATORAI_DASHBOARD_BACKEND"); value != "" {
+				imageConfig.SetBackend(value)
+			}
 		}
+
 	}
 
 	return imageConfig

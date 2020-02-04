@@ -55,3 +55,5 @@ spec:
           defaultMode: 420
           name: federatorai-dashboard-backend-config
         name: federatorai-dashboard-backend-config
+      - name:  federatorai-backend-data-storage
+      - name:  federatorai-backend-log-storage
