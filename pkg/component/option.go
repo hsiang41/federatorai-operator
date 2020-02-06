@@ -25,3 +25,9 @@ func WithPodSecurityPolicyVersion(podSecurityPolicyVersion string) ComponentConf
 		cc.PodSecurityPolicyVersion = podSecurityPolicyVersion
 	}
 }
+
+func WithPrometheusConfig(config PrometheusConfig) ComponentConfigOption {
+	return func(cc *ComponentConfig) {
+		cc.Prometheus = config
+	}
+}

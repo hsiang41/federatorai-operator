@@ -7,9 +7,11 @@ type InfluxDBConfig struct {
 }
 
 type PrometheusConfig struct {
-	Address  string
-	Username string
-	Password string
+	Address             string
+	Username            string
+	Password            string
+	BearerTokenFilePath string
+	InsecureSkipVerify  bool
 }
 
 type FederatoraiAgentGPUDatasourceConfig struct {

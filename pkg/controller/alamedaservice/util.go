@@ -34,6 +34,7 @@ var (
 		"RELATED_IMAGE_FEDERATORAI_AGENT_GPU",
 		"RELATED_IMAGE_FEDERATORAI_AGENT_PRELOADER",
 		"RELATED_IMAGE_FEDERATORAI_AGENT",
+		"RELATED_IMAGE_FEDERATORAI_AGENT_APP",
 		"RELATED_IMAGE_FEDERATORAI_RESTAPI",
 		"RELATED_IMAGE_FEDEMETER_INFLUXDB",
 		"RELATED_IMAGE_FEDERATORAI_DASHBOARD_FRONTEND",
@@ -195,6 +196,10 @@ func setImageConfigWithAlamedaServiceParameter(imageConfig component.ImageConfig
 		imageConfig.SetFederatoraiAgentGPU(image)
 	}
 
+	if image := asp.FederatoraiAgentAppSectionSet.Image; image != "" {
+		imageConfig.SetFederatoraiAgentApp(image)
+	}
+
 	if image := asp.FederatoraiRestSectionSet.Image; image != "" {
 		imageConfig.SetFederatoraiRestAPI(image)
 	}
@@ -286,6 +291,10 @@ func setImageConfigWithEnv(imageConfig component.ImageConfig) component.ImageCon
 		case "RELATED_IMAGE_FEDERATORAI_AGENT":
 			if value := os.Getenv("RELATED_IMAGE_FEDERATORAI_AGENT"); value != "" {
 				imageConfig.SetFederatoraiAgent(value)
+			}
+		case "RELATED_IMAGE_FEDERATORAI_AGENT_APP":
+			if value := os.Getenv("RELATED_IMAGE_FEDERATORAI_AGENT_APP"); value != "" {
+				imageConfig.SetFederatoraiAgentApp(value)
 			}
 		case "RELATED_IMAGE_FEDERATORAI_RESTAPI":
 			if value := os.Getenv("RELATED_IMAGE_FEDERATORAI_RESTAPI"); value != "" {

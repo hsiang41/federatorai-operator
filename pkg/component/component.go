@@ -53,6 +53,8 @@ type ComponentConfig struct {
 	FederatoraiAgentGPU FederatoraiAgentGPUConfig
 
 	Image ImageConfig
+
+	Prometheus PrometheusConfig
 }
 
 func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha1.AlamedaService, opts ...ComponentConfigOption) *ComponentConfig {
@@ -61,6 +63,13 @@ func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha
 		defaultNamespace                = ""
 		defaultPodSecurityPolicyGroup   = policyv1beta1.SchemeGroupVersion.Group
 		defaultPodSecurityPolicyVersion = policyv1beta1.SchemeGroupVersion.Version
+		defaultPrometheusConfig         = PrometheusConfig{
+			Address:             "https://prometheus-k8s.openshift-monitoring.svc:9091",
+			Username:            "",
+			Password:            "",
+			BearerTokenFilePath: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+			InsecureSkipVerify:  true,
+		}
 	)
 
 	c := ComponentConfig{
@@ -70,6 +79,7 @@ func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha
 		PodTemplateConfig:        ptc,
 		FederatoraiAgentGPU:      NewDefaultFederatoraiAgentGPUConfig(),
 		Image:                    NewDefautlImageConfig(),
+		Prometheus:               defaultPrometheusConfig,
 	}
 
 	for _, opt := range opts {

@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: federatorai-agent-app-config
+  namespace: {{.NameSpace}}
+data:
+  transmitter.toml: |-
+    [log]
+     set-logcallers = true
+     output-level = "debug" # debug, info, warn, error, fatal, none
+
+    [input_jobs]
+        [input_jobs.kafka]
+        name = "kafka"
+        schedule-spec = "@every 30s"
+        lib-path = "/lib/inputlib/inputlib_kafka.so"
+        lib-configuration = "/etc/alameda/federatorai-agent/input/alameda_kafka.toml"
+
+    [output_jobs]
+        [output_jobs.datahub]
+        name = "datahub"
+        schedule-spec = "@every 30s"
+        lib-path = "/lib/outputlib/outputlib_datahub.so"
+        lib-configuration = "/etc/alameda/federatorai-agent/output/alameda_datahub.toml"
+
+  alameda_kafka.toml: |
+    [global]
+    interval = 60
+    timerange = 180
+
+    [datasource.prometheus]
+    datatype = "prometheus"
+    url = "{{.Prometheus.Address}}"
+    bearer_token_file = "{{.Prometheus.BearerTokenFilePath}}"
+    insecure_skip_verify = {{.Prometheus.InsecureSkipVerify}}
+
+    [[datasource.prometheus.measurement]]
+    name = "logoffset"
+    expr = "sum(rate(kafka_topic_partition_current_offset[1m])) by (consumergroup,topic)"
+    tags = ["consumergroup","topic"]
+    [datasource.prometheus.measurement.element.value]
+    type = "float"
+
+    [[datasource.prometheus.measurement]]
+    name = "currentoffset"
+    expr = "sum(rate(kafka_consumergroup_current_offset[1m])) by (consumergroup,topic)"
+    tags = ["consumergroup","topic"]
+    [datasource.prometheus.measurement.element.value]
+    type = "float"
+
+  alameda_datahub.toml: |
+    [datahub]
+    address = "alameda-datahub.{{.NameSpace}}:50050"
+
+    [datahub."retry-interval"]
+    default = 3 # second

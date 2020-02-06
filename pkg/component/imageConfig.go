@@ -23,6 +23,8 @@ const (
 	defaultImageFedemeterInfluxdb         = "quay.io/prophetstor/fedemeter-influxdb:v0.3.39"
 	defaultImageFrontend                  = "quay.io/prophetstor/federatorai-dashboard-frontend:v4.2.702"
 	defaultImageBackend                   = "quay.io/prophetstor/federatorai-dashboard-backend:v4.2.702"
+	// TODO:
+	defaultImageFederatoraiAgentApp = "quay.io/prophetstor/federatorai-agent-app:v4.2.512"
 )
 
 type ImageConfig struct {
@@ -44,6 +46,7 @@ type ImageConfig struct {
 	FederatoraiAgentGPU       string
 	FederatoraiAgentPreloader string
 	FederatoraiAgent          string
+	FederatoraiAgentApp       string
 	FederatoraiRestAPI        string
 	FedemeterInfluxDB         string
 	DashboardFrontend         string
@@ -71,6 +74,7 @@ func NewDefautlImageConfig() ImageConfig {
 		FederatoraiAgentGPU:       defaultImageFederatoraiAgentGPU,
 		FederatoraiAgentPreloader: defaultImageFederatoraiAgentPreloader,
 		FederatoraiAgent:          defaultImageFederatoraiAgent,
+		FederatoraiAgentApp:       defaultImageFederatoraiAgentApp,
 		FederatoraiRestAPI:        defaultImageFederatoraiRestAPI,
 		FedemeterInfluxDB:         defaultImageFedemeterInfluxdb,
 		DashboardFrontend:         defaultImageFrontend,
@@ -156,6 +160,11 @@ func (i *ImageConfig) SetFedemeterAPI(image string) {
 // SetFederatoraiAgentGPU sets image to imageConfig
 func (i *ImageConfig) SetFederatoraiAgentGPU(image string) {
 	i.FederatoraiAgentGPU = image
+}
+
+// SetFederatoraiAgentApp sets image to imageConfig
+func (i *ImageConfig) SetFederatoraiAgentApp(image string) {
+	i.FederatoraiAgentApp = image
 }
 
 // SetFederatoraiAgentPreloader sets image to imageConfig

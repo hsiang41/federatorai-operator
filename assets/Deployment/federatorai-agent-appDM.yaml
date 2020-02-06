@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: federatorai-agent-app
+  namespace: {{.NameSpace}}
+  labels:
+    app: alameda
+    component: federatorai-agent-app
+spec:
+  selector:
+    matchLabels:
+      app: alameda
+      component: federatorai-agent-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: alameda
+        component: federatorai-agent-app
+    spec:
+      containers:
+      - name: federatorai-agent-app
+        image: docker-registry.default.svc:5000/federatorai-agent/federatorai-agent-app:latest
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: federatorai-agent-app-config
+          mountPath: /etc/alameda/federatorai-agent/transmitter.toml
+          subPath: transmitter.toml
+        - name: federatorai-agent-app-config
+          mountPath: /etc/alameda/federatorai-agent/input/alameda_kafka.toml
+          subPath: alameda_kafka.toml
+        - name: federatorai-agent-app-config
+          mountPath: /etc/alameda/federatorai-agent/output/alameda_datahub.toml
+          subPath: alameda_datahub.toml
+      volumes:
+      - name: federatorai-agent-app-config
+        configMap:
+          name: federatorai-agent-app-config
+        items:
+          - key: transmitter.toml
+            path: transmitter.toml
+          - key: alameda_kafka.toml
+            path: alameda_kafka.toml
+          - key: alameda_datahub.toml
+            path: alameda_datahub.toml
+      - name: federatorai-agent-app-data-storage
+      - name: federatorai-agent-app-log-storage
+      serviceAccount: federatorai-agent-app
+      serviceAccountName: federatorai-agent-app

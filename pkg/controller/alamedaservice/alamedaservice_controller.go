@@ -495,6 +495,11 @@ func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace,
 		component.WithImageConfig(imageConfig),
 		component.WithPodSecurityPolicyGroup(r.podSecurityPolicesApiGroupVersion.Group),
 		component.WithPodSecurityPolicyVersion(r.podSecurityPolicesApiGroupVersion.Version),
+		component.WithPrometheusConfig(component.PrometheusConfig{
+			Address:             alamedaService.Spec.PrometheusService,
+			BearerTokenFilePath: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+			InsecureSkipVerify:  true,
+		}),
 	)
 	return componentConfg
 }

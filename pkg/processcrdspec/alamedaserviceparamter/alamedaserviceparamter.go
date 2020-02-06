@@ -29,6 +29,7 @@ var (
 		federatoraiRestList,
 		frontendList,
 		backendList,
+		federatoraiAgentAppList,
 	}
 
 	frontendList = []string{
@@ -187,6 +188,14 @@ var (
 		"Deployment/federatorai-agent-preloaderDM.yaml",
 	}
 
+	federatoraiAgentAppList = []string{
+		"ClusterRole/federatorai-agent-appCR.yaml",
+		"ClusterRoleBinding/federatorai-agent-appCRB.yaml",
+		"ConfigMap/federatorai-agent-app-config.yaml",
+		"Deployment/federatorai-agent-appDM.yaml",
+		"ServiceAccount/federatorai-agent-appSA.yaml",
+	}
+
 	selfDrivingList = []string{
 		"AlamedaScaler/alamedaScaler-alameda.yaml",
 	}
@@ -225,6 +234,7 @@ var (
 		"PersistentVolumeClaim/federatorai-agent-preloader-log.yaml",
 		"PersistentVolumeClaim/federatorai-backend-log.yaml",
 		"PersistentVolumeClaim/federatorai-frontend-log.yaml",
+		"PersistentVolumeClaim/federatorai-agent-app-log.yaml",
 	}
 
 	dataPVCList = []string{
@@ -246,6 +256,7 @@ var (
 		"PersistentVolumeClaim/federatorai-agent-preloader-data.yaml",
 		"PersistentVolumeClaim/federatorai-backend-data.yaml",
 		"PersistentVolumeClaim/federatorai-frontend-data.yaml",
+		"PersistentVolumeClaim/federatorai-agent-app-data.yaml",
 	}
 )
 
@@ -388,6 +399,7 @@ type AlamedaServiceParamter struct {
 	FederatoraiAgentPreloaderSectionSet v1alpha1.AlamedaComponentSpec
 	FederatoraiFrontendSectionSet       v1alpha1.AlamedaComponentSpec
 	FederatoraiBackendSectionSet        v1alpha1.AlamedaComponentSpec
+	FederatoraiAgentAppSectionSet       v1alpha1.AlamedaComponentSpec
 	CurrentCRDVersion                   v1alpha1.AlamedaServiceStatusCRDVersion
 	previousCRDVersion                  v1alpha1.AlamedaServiceStatusCRDVersion
 }
@@ -430,6 +442,7 @@ func NewAlamedaServiceParamter(instance *v1alpha1.AlamedaService) *AlamedaServic
 		FederatoraiAgentPreloaderSectionSet: instance.Spec.FederatoraiAgentPreloaderSectionSet,
 		FederatoraiFrontendSectionSet:       instance.Spec.FederatoraiFrontendSectionSet,
 		FederatoraiBackendSectionSet:        instance.Spec.FederatoraiBackendSectionSet,
+		FederatoraiAgentAppSectionSet:       instance.Spec.FederatoraiAgentAppSectionSet,
 		CurrentCRDVersion:                   instance.Status.CRDVersion,
 		previousCRDVersion:                  instance.Status.CRDVersion,
 	}
@@ -528,6 +541,7 @@ func (asp *AlamedaServiceParamter) GetUninstallPersistentVolumeClaimSource() *Re
 	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiAgentPreloaderSectionSet.Storages, "PersistentVolumeClaim/federatorai-agent-preloader-log.yaml", v1alpha1.Log)
 	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiFrontendSectionSet.Storages, "PersistentVolumeClaim/federatorai-frontend-log.yaml", v1alpha1.Log)
 	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiBackendSectionSet.Storages, "PersistentVolumeClaim/federatorai-backend-log.yaml", v1alpha1.Log)
+	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiBackendSectionSet.Storages, "PersistentVolumeClaim/federatorai-agent-app-log.yaml", v1alpha1.Log)
 
 	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.InfluxdbSectionSet.Storages, "PersistentVolumeClaim/my-alamedainfluxdbPVC.yaml", v1alpha1.Data)
 	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.GrafanaSectionSet.Storages, "PersistentVolumeClaim/my-alamedagrafanaPVC.yaml", v1alpha1.Data)
@@ -549,6 +563,7 @@ func (asp *AlamedaServiceParamter) GetUninstallPersistentVolumeClaimSource() *Re
 	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiAgentPreloaderSectionSet.Storages, "PersistentVolumeClaim/federatorai-agent-preloader-data.yaml", v1alpha1.Data)
 	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiFrontendSectionSet.Storages, "PersistentVolumeClaim/federatorai-frontend-data.yaml", v1alpha1.Data)
 	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiBackendSectionSet.Storages, "PersistentVolumeClaim/federatorai-backend-data.yaml", v1alpha1.Data)
+	pvc = sectionUninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiBackendSectionSet.Storages, "PersistentVolumeClaim/federatorai-agent-app-data.yaml", v1alpha1.Data)
 	return &Resource{
 		PersistentVolumeClaimList: pvc,
 	}
@@ -606,6 +621,7 @@ func (asp *AlamedaServiceParamter) getInstallPersistentVolumeClaimSource() []str
 	pvc = sectioninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiAgentPreloaderSectionSet.Storages, "PersistentVolumeClaim/federatorai-agent-preloader-log.yaml", v1alpha1.Log)
 	pvc = sectioninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiFrontendSectionSet.Storages, "PersistentVolumeClaim/federatorai-frontend-log.yaml", v1alpha1.Log)
 	pvc = sectioninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiBackendSectionSet.Storages, "PersistentVolumeClaim/federatorai-backend-log.yaml", v1alpha1.Log)
+	pvc = sectioninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiBackendSectionSet.Storages, "PersistentVolumeClaim/federatorai-agent-app-log.yaml", v1alpha1.Log)
 	if gloabalDataFlag {
 		pvc = append(pvc, dataPVCList...)
 	}
@@ -628,6 +644,7 @@ func (asp *AlamedaServiceParamter) getInstallPersistentVolumeClaimSource() []str
 	pvc = sectioninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiAgentPreloaderSectionSet.Storages, "PersistentVolumeClaim/federatorai-agent-preloader-data.yaml", v1alpha1.Data)
 	pvc = sectioninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiFrontendSectionSet.Storages, "PersistentVolumeClaim/federatorai-frontend-data.yaml", v1alpha1.Data)
 	pvc = sectioninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiBackendSectionSet.Storages, "PersistentVolumeClaim/federatorai-backend-data.yaml", v1alpha1.Data)
+	pvc = sectioninstallPersistentVolumeClaimSource(pvc, asp.FederatoraiBackendSectionSet.Storages, "PersistentVolumeClaim/federatorai-agent-app-data.yaml", v1alpha1.Data)
 	return pvc
 
 }

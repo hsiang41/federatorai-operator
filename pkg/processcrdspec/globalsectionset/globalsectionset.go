@@ -19,8 +19,6 @@ func GlobalSectionSetParamterToStatefulset(ss *appsv1.StatefulSet, asp *alamedas
 }
 
 func GlobalSectionSetParamterToDeployment(dep *appsv1.Deployment, asp *alamedaserviceparamter.AlamedaServiceParamter) {
-	processDeploymentPrometheusService(dep, asp.PrometheusService) //Global section set DeploymentSpec's PrometheusService
-
 	switch dep.Name {
 	case util.AlamedaaiDPN:
 		{
@@ -94,6 +92,9 @@ func GlobalSectionSetParamterToDeployment(dep *appsv1.Deployment, asp *alamedase
 	case util.FederatoraiAgentDPN:
 		util.SetStorageToVolumeSource(dep, asp.Storages, "federatorai-agent-type.pvc", util.AlamedaGroup)
 		util.SetStorageToMountPath(dep, asp.Storages, util.FederatoraiAgentCTN, "federatorai-agent-type-storage", util.AlamedaGroup)
+	case util.FederatoraiAgentAppDPN:
+		util.SetStorageToVolumeSource(dep, asp.Storages, "federatorai-agent-app-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.FederatoraiAgentAppCTN, "federatorai-agent-app-type-storage", util.AlamedaGroup)
 	case util.FederatoraiAgentGPUDPN:
 		util.SetStorageToVolumeSource(dep, asp.Storages, "federatorai-agent-gpu-type.pvc", util.AlamedaGroup)
 		util.SetStorageToMountPath(dep, asp.Storages, util.FederatoraiAgentGPUCTN, "federatorai-agent-gpu-type-storage", util.AlamedaGroup)
@@ -109,7 +110,6 @@ func GlobalSectionSetParamterToDeployment(dep *appsv1.Deployment, asp *alamedase
 	case util.FederatoraiBackendDPN:
 		util.SetStorageToVolumeSource(dep, asp.Storages, "federatorai-backend-type.pvc", util.AlamedaGroup)
 		util.SetStorageToMountPath(dep, asp.Storages, util.FederatoraiBackendCTN, "federatorai-backend-type-storage", util.AlamedaGroup)
-
 	}
 
 	envVars := getEnvVarsToUpdateByDeployment(dep.Name, asp)
@@ -130,26 +130,6 @@ func processConfigMapsPrometheusService(cm *corev1.ConfigMap, prometheusservice 
 }
 func GlobalSectionSetParamterToConfigMap(cm *corev1.ConfigMap, prometheusService string, namespace string) {
 	processConfigMapsPrometheusService(cm, prometheusService) //ConfigMapData's PrometheusService
-}
-
-func processDeploymentPrometheusService(dep *appsv1.Deployment, prometheusservice string) {
-	if flag, envIndex, ctnIndex := isPrometheusServiceDep(dep); flag == true && prometheusservice != "" {
-		dep.Spec.Template.Spec.Containers[ctnIndex].Env[envIndex].Value = prometheusservice
-	}
-}
-
-func isPrometheusServiceDep(dep *appsv1.Deployment) (bool, int, int) {
-	for ctnIndex, v := range dep.Spec.Template.Spec.Containers {
-		if len(v.Env) > 0 {
-			for envIndex, value := range dep.Spec.Template.Spec.Containers[ctnIndex].Env {
-				if value.Name == util.OriginDeploymentPrometheusLocation {
-					return true, envIndex, ctnIndex
-				}
-			}
-			return false, -1, -1
-		}
-	}
-	return false, -1, -1
 }
 
 func GlobalSectionSetParamterToPersistentVolumeClaim(pvc *corev1.PersistentVolumeClaim, asp *alamedaserviceparamter.AlamedaServiceParamter) {
