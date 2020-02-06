@@ -29,13 +29,14 @@ data:
         }
       },
       "promql": {
-        "url": "prometheus-k8s-0.prometheus-operated.openshift-monitoring",
-        "port": 9091,
-        "protocol": "https",
+        "url": "{{.Prometheus.Host}}",
+        "port": {{.Prometheus.Port}},
+        "protocol": "{{.Prometheus.Protocol}}",
         "prefix": "api/v1/query?query=",
         "rangeprefix": "api/v1/query_range",
         "username": "internal",
         "password": ""
+        "bearTokenFilePath": "{{.Prometheus.BearerTokenFilePath}}"
       },
       "restapi": {
         "url": "federatorai-rest.{{.NameSpace}}:5055",

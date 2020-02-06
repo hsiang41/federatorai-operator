@@ -3,6 +3,7 @@ package alamedaservice
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -258,11 +259,16 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	asp := alamedaserviceparamter.NewAlamedaServiceParamter(instance)
 	ns, err := r.getNamespace(request.Namespace)
 	if err != nil {
-		log.V(-1).Info("get namespace failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Get Namespace failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 
-	componentConfig = r.newComponentConfig(ns, *instance, *asp)
+	componentConfig, err = r.newComponentConfig(ns, *instance, *asp)
+	if err != nil {
+		log.V(-1).Info("New ComponentConfig failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+	}
+
 	resource := r.removeUnsupportedResource(*asp.GetInstallResource())
 	installResource := &resource
 	if err = r.syncCustomResourceDefinition(instance, clusterRoleGC, asp, installResource); err != nil {
@@ -483,25 +489,36 @@ func (r *ReconcileAlamedaService) getNamespace(namespaceName string) (corev1.Nam
 	return namespace, nil
 }
 
-func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace, alamedaService federatoraiv1alpha1.AlamedaService, asp alamedaserviceparamter.AlamedaServiceParamter) *component.ComponentConfig {
+func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace, alamedaService federatoraiv1alpha1.AlamedaService, asp alamedaserviceparamter.AlamedaServiceParamter) (*component.ComponentConfig, error) {
 
 	imageConfig := newDefautlImageConfig()
 	imageConfig = setImageConfigWithAlamedaServiceParameter(imageConfig, asp)
 	imageConfig = setImageConfigWithEnv(imageConfig)
 
 	podTemplateConfig := component.NewDefaultPodTemplateConfig(namespace)
+
+	prometheusConfig := component.PrometheusConfig{
+		Address:             alamedaService.Spec.PrometheusService,
+		BearerTokenFilePath: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+		InsecureSkipVerify:  true,
+	}
+	prometheusURL, err := url.Parse(alamedaService.Spec.PrometheusService)
+	if err != nil {
+		return nil, errors.Wrap(err, "parse Prometheus url failed")
+	} else {
+		prometheusConfig.Host = prometheusURL.Hostname()
+		prometheusConfig.Port = prometheusURL.Port()
+		prometheusConfig.Protocol = prometheusURL.Scheme
+	}
+
 	componentConfg := component.NewComponentConfig(podTemplateConfig, alamedaService,
 		component.WithNamespace(namespace.Name),
 		component.WithImageConfig(imageConfig),
 		component.WithPodSecurityPolicyGroup(r.podSecurityPolicesApiGroupVersion.Group),
 		component.WithPodSecurityPolicyVersion(r.podSecurityPolicesApiGroupVersion.Version),
-		component.WithPrometheusConfig(component.PrometheusConfig{
-			Address:             alamedaService.Spec.PrometheusService,
-			BearerTokenFilePath: "/var/run/secrets/kubernetes.io/serviceaccount/token",
-			InsecureSkipVerify:  true,
-		}),
+		component.WithPrometheusConfig(prometheusConfig),
 	)
-	return componentConfg
+	return componentConfg, nil
 }
 
 func (r *ReconcileAlamedaService) createScalerforAlameda(instance *federatoraiv1alpha1.AlamedaService, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {

@@ -63,13 +63,7 @@ func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha
 		defaultNamespace                = ""
 		defaultPodSecurityPolicyGroup   = policyv1beta1.SchemeGroupVersion.Group
 		defaultPodSecurityPolicyVersion = policyv1beta1.SchemeGroupVersion.Version
-		defaultPrometheusConfig         = PrometheusConfig{
-			Address:             "https://prometheus-k8s.openshift-monitoring.svc:9091",
-			Username:            "",
-			Password:            "",
-			BearerTokenFilePath: "/var/run/secrets/kubernetes.io/serviceaccount/token",
-			InsecureSkipVerify:  true,
-		}
+		defaultPrometheusConfig         = PrometheusConfig{}
 	)
 
 	c := ComponentConfig{

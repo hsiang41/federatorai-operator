@@ -8,6 +8,9 @@ type InfluxDBConfig struct {
 
 type PrometheusConfig struct {
 	Address             string
+	Host                string
+	Port                string
+	Protocol            string
 	Username            string
 	Password            string
 	BearerTokenFilePath string
