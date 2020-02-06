@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: federatorai-agent-app
-        image: docker-registry.default.svc:5000/federatorai-agent/federatorai-agent-app:latest
+        image: repo.prophetservice.com/federatorai-agent-app:v0.9.148
         imagePullPolicy: Always
         volumeMounts:
         - name: federatorai-agent-app-config
