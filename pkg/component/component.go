@@ -55,6 +55,7 @@ type ComponentConfig struct {
 	Image ImageConfig
 
 	Prometheus PrometheusConfig
+	Kafka      KafkaConfig
 }
 
 func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha1.AlamedaService, opts ...ComponentConfigOption) *ComponentConfig {
@@ -83,13 +84,13 @@ func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha
 	faiAgentGPUSectionSet := alamedaService.Spec.FederatoraiAgentGPUSectionSet
 	if faiAgentGPUSectionSet.Prometheus != nil {
 		c.FederatoraiAgentGPU.Datasource.Prometheus.Address = faiAgentGPUSectionSet.Prometheus.Address
-		c.FederatoraiAgentGPU.Datasource.Prometheus.Username = faiAgentGPUSectionSet.Prometheus.Username
-		c.FederatoraiAgentGPU.Datasource.Prometheus.Password = faiAgentGPUSectionSet.Prometheus.Password
+		c.FederatoraiAgentGPU.Datasource.Prometheus.BasicAuth.Username = faiAgentGPUSectionSet.Prometheus.Username
+		c.FederatoraiAgentGPU.Datasource.Prometheus.BasicAuth.Password = faiAgentGPUSectionSet.Prometheus.Password
 	}
 	if faiAgentGPUSectionSet.InfluxDB != nil {
 		c.FederatoraiAgentGPU.Datasource.InfluxDB.Address = faiAgentGPUSectionSet.InfluxDB.Address
-		c.FederatoraiAgentGPU.Datasource.InfluxDB.Username = faiAgentGPUSectionSet.InfluxDB.Username
-		c.FederatoraiAgentGPU.Datasource.InfluxDB.Password = faiAgentGPUSectionSet.InfluxDB.Password
+		c.FederatoraiAgentGPU.Datasource.InfluxDB.BasicAuth.Username = faiAgentGPUSectionSet.InfluxDB.Username
+		c.FederatoraiAgentGPU.Datasource.InfluxDB.BasicAuth.Password = faiAgentGPUSectionSet.InfluxDB.Password
 	}
 
 	return &c

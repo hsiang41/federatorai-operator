@@ -31,8 +31,8 @@ data:
     [datasource.prometheus]
     datatype = "prometheus"
     url = "{{.Prometheus.Address}}"
-    bearer_token_file = "{{.Prometheus.BearerTokenFilePath}}"
-    insecure_skip_verify = {{.Prometheus.InsecureSkipVerify}}
+    bearer_token_file = "{{.Prometheus.BearerTokenFile}}"
+    insecure_skip_verify = {{.Prometheus.TLS.InsecureSkipVerify}}
 
     [[datasource.prometheus.measurement]]
     name = "logoffset"

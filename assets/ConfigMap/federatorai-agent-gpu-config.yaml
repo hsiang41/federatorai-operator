@@ -33,8 +33,8 @@ data:
     datatype = "influx"
     address = "{{.FederatoraiAgentGPU.Datasource.InfluxDB.Address}}"
     port = ""
-    username = "{{.FederatoraiAgentGPU.Datasource.InfluxDB.Username}}"
-    password = "{{.FederatoraiAgentGPU.Datasource.InfluxDB.Password}}"
+    username = "{{.FederatoraiAgentGPU.Datasource.InfluxDB.BasicAuth.Username}}"
+    password = "{{.FederatoraiAgentGPU.Datasource.InfluxDB.BasicAuth.Password}}"
     database = "gpu_counting"
 
     [[datasource.influx.measurement]]
@@ -49,8 +49,8 @@ data:
     datatype = "prometheus"
     address = "{{.FederatoraiAgentGPU.Datasource.Prometheus.Address}}"
     port = ""
-    username = "{{.FederatoraiAgentGPU.Datasource.Prometheus.Username}}"
-    password = "{{.FederatoraiAgentGPU.Datasource.Prometheus.Password}}"
+    username = "{{.FederatoraiAgentGPU.Datasource.Prometheus.BasicAuth.Username}}"
+    password = "{{.FederatoraiAgentGPU.Datasource.Prometheus.BasicAuth.Password}}"
 
     [[datasource.prometheus.measurement]]
     name = "nvidia_gpu_duty_cycle"

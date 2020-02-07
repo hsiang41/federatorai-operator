@@ -1,20 +1,41 @@
 package component
 
 type InfluxDBConfig struct {
-	Address  string
+	Address   string
+	BasicAuth BasicAuth
+}
+
+type PrometheusConfig struct {
+	Address         string
+	Host            string
+	Port            string
+	Protocol        string
+	BasicAuth       BasicAuth
+	BearerTokenFile string
+	TLS             TLSConfig
+}
+
+type KafkaConfig struct {
+	BrokerAddresses []string
+	Version         string
+
+	SASL SASLConfig
+	TLS  TLSConfig
+}
+
+type BasicAuth struct {
 	Username string
 	Password string
 }
 
-type PrometheusConfig struct {
-	Address             string
-	Host                string
-	Port                string
-	Protocol            string
-	Username            string
-	Password            string
-	BearerTokenFilePath string
-	InsecureSkipVerify  bool
+type SASLConfig struct {
+	Enabled   bool
+	BasicAuth BasicAuth
+}
+
+type TLSConfig struct {
+	Enabled            bool
+	InsecureSkipVerify bool
 }
 
 type FederatoraiAgentGPUDatasourceConfig struct {
@@ -30,14 +51,18 @@ func NewDefaultFederatoraiAgentGPUConfig() FederatoraiAgentGPUConfig {
 	return FederatoraiAgentGPUConfig{
 		Datasource: FederatoraiAgentGPUDatasourceConfig{
 			InfluxDB: InfluxDBConfig{
-				Address:  "",
-				Username: "",
-				Password: "",
+				Address: "",
+				BasicAuth: BasicAuth{
+					Username: "",
+					Password: "",
+				},
 			},
 			Prometheus: PrometheusConfig{
-				Address:  "",
-				Username: "",
-				Password: "",
+				Address: "",
+				BasicAuth: BasicAuth{
+					Username: "",
+					Password: "",
+				},
 			},
 		},
 	}

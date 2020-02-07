@@ -36,7 +36,7 @@ data:
         "rangeprefix": "api/v1/query_range",
         "username": "internal",
         "password": ""
-        "bearTokenFilePath": "{{.Prometheus.BearerTokenFilePath}}"
+        "bearTokenFilePath": "{{.Prometheus.BearerTokenFile}}"
       },
       "restapi": {
         "url": "federatorai-rest.{{.NameSpace}}:5055",

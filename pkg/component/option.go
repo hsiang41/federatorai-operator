@@ -31,3 +31,9 @@ func WithPrometheusConfig(config PrometheusConfig) ComponentConfigOption {
 		cc.Prometheus = config
 	}
 }
+
+func WithKafkaConfig(config KafkaConfig) ComponentConfigOption {
+	return func(cc *ComponentConfig) {
+		cc.Kafka = config
+	}
+}

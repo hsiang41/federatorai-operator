@@ -16,6 +16,24 @@ const (
 	PlatformOpenshift3_9 Platform = "openshift3.9"
 )
 
+type TLSSpec struct {
+	Enabled            bool `json:"enabled,omitempty"`
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+}
+
+type SASLSpec struct {
+	Enabled  bool   `json:"enabled,omitempty"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
+type KafkaSpec struct {
+	BrokerAddresses []string `json:"brokerAddresses,omitempty"`
+	Version         string   `json:"version,omitempty"`
+	TLS             TLSSpec  `json:"tls,omitempty"`
+	SASL            SASLSpec `json:"sasl,omitempty"`
+}
+
 // AlamedaServiceSpec defines the desired state of AlamedaService
 // +k8s:openapi-gen=true
 type AlamedaServiceSpec struct {
@@ -36,6 +54,7 @@ type AlamedaServiceSpec struct {
 	ServiceExposures  []ServiceExposureSpec `json:"serviceExposures"`
 	EnableWeavescope  bool                  `json:"enableWeavescope"`
 	Keycode           KeycodeSpec           `json:"keycode"`
+	Kafka             KafkaSpec             `json:"kafka"`
 	//Component Section Schema
 	InfluxdbSectionSet                  AlamedaComponentSpec    `json:"alamedaInfluxdb"`
 	GrafanaSectionSet                   AlamedaComponentSpec    `json:"alamedaGrafana"`

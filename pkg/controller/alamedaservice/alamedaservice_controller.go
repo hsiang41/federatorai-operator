@@ -498,9 +498,11 @@ func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace,
 	podTemplateConfig := component.NewDefaultPodTemplateConfig(namespace)
 
 	prometheusConfig := component.PrometheusConfig{
-		Address:             alamedaService.Spec.PrometheusService,
-		BearerTokenFilePath: "/var/run/secrets/kubernetes.io/serviceaccount/token",
-		InsecureSkipVerify:  true,
+		Address:         alamedaService.Spec.PrometheusService,
+		BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+		TLS: component.TLSConfig{
+			InsecureSkipVerify: true,
+		},
 	}
 	prometheusURL, err := url.Parse(alamedaService.Spec.PrometheusService)
 	if err != nil {
@@ -511,12 +513,29 @@ func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace,
 		prometheusConfig.Protocol = prometheusURL.Scheme
 	}
 
+	kafka := component.KafkaConfig{
+		BrokerAddresses: asp.Kafka.BrokerAddresses,
+		Version:         asp.Kafka.Version,
+		SASL: component.SASLConfig{
+			Enabled: asp.Kafka.SASL.Enabled,
+			BasicAuth: component.BasicAuth{
+				Username: asp.Kafka.SASL.Username,
+				Password: asp.Kafka.SASL.Password,
+			},
+		},
+		TLS: component.TLSConfig{
+			Enabled:            asp.Kafka.TLS.Enabled,
+			InsecureSkipVerify: asp.Kafka.TLS.InsecureSkipVerify,
+		},
+	}
+
 	componentConfg := component.NewComponentConfig(podTemplateConfig, alamedaService,
 		component.WithNamespace(namespace.Name),
 		component.WithImageConfig(imageConfig),
 		component.WithPodSecurityPolicyGroup(r.podSecurityPolicesApiGroupVersion.Group),
 		component.WithPodSecurityPolicyVersion(r.podSecurityPolicesApiGroupVersion.Version),
 		component.WithPrometheusConfig(prometheusConfig),
+		component.WithKafkaConfig(kafka),
 	)
 	return componentConfg, nil
 }

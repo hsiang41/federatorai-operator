@@ -42,6 +42,26 @@ spec:
               fieldPath: metadata.name
         - name: ALAMEDA_OPERATOR_DATAHUB_ADDRESS
           value: "alameda-datahub.{{.NameSpace}}.svc:50050"
+        - name: ALAMEDA_OPERATOR_KAFKA_BROKERADDRESSES
+          value: "{{range $index, $address := .Kafka.BrokerAddresses}}{{if $index}},{{end}}{{$address}}{{end}}"
+        - name: ALAMEDA_OPERATOR_KAFKA_VERSION
+          value: "{{.Kafka.Version}}"
+        - name: ALAMEDA_OPERATOR_KAFKA_SASL_ENABLE
+          value: "{{.Kafka.SASL.Enabled}}"
+        - name: ALAMEDA_OPERATOR_KAFKA_SASL_USERNAME
+          value: "{{.Kafka.SASL.BasicAuth.Username}}"
+        - name: ALAMEDA_OPERATOR_KAFKA_SASL_PASSWORD
+          value: "{{.Kafka.SASL.BasicAuth.Password}}"
+        - name: ALAMEDA_OPERATOR_KAFKA_TLS_ENABLE
+          value: "{{.Kafka.TLS.Enabled}}"
+        - name: ALAMEDA_OPERATOR_KAFKA_TLS_INSECURESKIPVERIFY
+          value: "{{.Kafka.TLS.InsecureSkipVerify}}"
+        - name: ALAMEDA_OPERATOR_PROMETHEUS_URL
+          value: "{{.Prometheus.Address}}"
+        - name: ALAMEDA_OPERATOR_PROMETHEUS_BEARERTOKENFILE
+          value: "{{.Prometheus.BearerTokenFile}}"
+        - name: ALAMEDA_OPERATOR_PROMETHEUS_TLSCONFIG_INSECURESKIPVERIFY
+          value: "{{.Prometheus.TLS.InsecureSkipVerify}}"
         readinessProbe:
           exec:
             command:
