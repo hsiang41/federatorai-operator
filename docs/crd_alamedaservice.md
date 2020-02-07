@@ -154,6 +154,9 @@ spec:
 - Field: prometheusService
   - type: string
   - description: This field tells datahub and Grafana where the Prometheus URL is to retrieve pods/nodes peformance metrics data.
+- Field: kafka
+  - type: [KafkaSpec](#kafkaspec)
+  - description: This field is optional and Federator.ai Operator will configures componenets that need to conmunucate with Kafka with this field.
 - Field: storages
   - type: [StorageSpec](#storagespec) array
   - description: This field is optional and it lists storage settings which applied to each operand.
@@ -250,6 +253,39 @@ spec:
 - Field: summary
   - type: string
   - description: Detail information of the keycode applied to Federator.ai.
+
+### KafkaSpec
+- Field: brokerAddresses
+  - type: string array
+  - description: Kafka brokers' address that can be used when creating connection.
+- Field: version
+  - type: string
+  - description: Version of Kafka.
+- Field: sasl
+  - type: [SASLSpec](#saslspec)
+  - description: SASL specification when communicate with Kafka.
+- Field: tls
+  - type: [TLSSpec](#tlsspec)
+  - description: TLS specification when communicate with Kafka.
+
+  ### SASLSpec
+- Field: enabled
+  - type: boolean
+  - description: Specify if sasl is enabled.  
+- Field: username
+  - type: string
+  - description: Specify which username to be used when communicate with server. 
+- Field: password
+  - type: string
+  - description: Specify which password to be used when communicate with server.
+
+  ### TLSSpec
+- Field: enabled
+  - type: boolean
+  - description: Specify if tls is enabled.  
+- Field: insecureSkipVerify
+  - type: boolean
+  - description: Specify if tls accepts any certification presented by the server.  
 
 ### StorageSpec
 

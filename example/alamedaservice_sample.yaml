@@ -4,6 +4,18 @@ metadata:
   name: my-alamedaservice
   namespace: federatorai
 spec:
+  kafka:
+    brokerAddresses:
+    # - broker1:9092
+    # - broker2:9092
+    version: # 0.11.0.0
+    sasl:
+      enabled: false
+      username: ""
+      password: ""
+    tls:
+      enabled: false
+      insecureSkipVerify: true
   keycode:
     codeNumber: D3JXN-LIFTQ-KQEZ3-WZBNI-DA3WZ-A7HKQ
   selfDriving: false             ## to enable resource self-orchestration of the deployed Alameda components
