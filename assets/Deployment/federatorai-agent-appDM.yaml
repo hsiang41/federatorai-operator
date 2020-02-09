@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: federatorai-agent-app
-        image: repo.prophetservice.com/federatorai-agent-app:v0.9.148
+        image: {{.Image.FederatoraiAgentApp}}
         imagePullPolicy: Always
         volumeMounts:
         - name: federatorai-agent-app-config
