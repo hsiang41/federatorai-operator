@@ -7,7 +7,7 @@ data:
   transmitter.toml: |-
     [log]
      set-logcallers = true
-     output-level = "debug" # debug, info, warn, error, fatal, none
+     output-level = "info" # debug, info, warn, error, fatal, none
 
     [input_jobs]
         [input_jobs.kafka]
@@ -27,6 +27,7 @@ data:
     [global]
     interval = 60
     timerange = 180
+    granularity = 60
 
     [datasource.prometheus]
     datatype = "prometheus"
@@ -37,14 +38,14 @@ data:
     [[datasource.prometheus.measurement]]
     name = "logoffset"
     expr = "sum(rate(kafka_topic_partition_current_offset[1m])) by (consumergroup,topic)"
-    tags = ["consumergroup","topic"]
+    tags = ["consumergroup","topic","namespace"]
     [datasource.prometheus.measurement.element.value]
     type = "float"
 
     [[datasource.prometheus.measurement]]
     name = "currentoffset"
     expr = "sum(rate(kafka_consumergroup_current_offset[1m])) by (consumergroup,topic)"
-    tags = ["consumergroup","topic"]
+    tags = ["consumergroup","topic","namespace"]
     [datasource.prometheus.measurement.element.value]
     type = "float"
 

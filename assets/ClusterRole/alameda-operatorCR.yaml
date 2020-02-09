@@ -101,3 +101,9 @@ rules:
   - update
   - list
   - delete
+- verbs:
+  - create
+  apiGroups:
+  - ""
+  resources:
+  - configmaps

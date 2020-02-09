@@ -66,8 +66,6 @@ spec:
               description: 'Important: Run "make" to regenerate code after modifying
                 this file'
               type: object
-          required:
-          - selector
           type: object
         status:
           properties:
