@@ -37,14 +37,14 @@ data:
 
     [[datasource.prometheus.measurement]]
     name = "logoffset"
-    expr = "sum(rate(kafka_topic_partition_current_offset[1m])) by (consumergroup,topic)"
+    expr = "sum(rate(kafka_topic_partition_current_offset[1m])) by (consumergroup,topic,namespace)"
     tags = ["consumergroup","topic","namespace"]
     [datasource.prometheus.measurement.element.value]
     type = "float"
 
     [[datasource.prometheus.measurement]]
     name = "currentoffset"
-    expr = "sum(rate(kafka_consumergroup_current_offset[1m])) by (consumergroup,topic)"
+    expr = "sum(rate(kafka_consumergroup_current_offset[1m])) by (consumergroup,topic,namespace)"
     tags = ["consumergroup","topic","namespace"]
     [datasource.prometheus.measurement.element.value]
     type = "float"
