@@ -513,7 +513,7 @@ new_nginx_example()
                 "name": "${nginx_name}"
             },
             "spec": {
-                "replicas": 1,
+                "replicas": 2,
                 "selector": {
                     "app": "${nginx_name}",
                     "deploymentconfig": "${nginx_name}"
@@ -552,8 +552,8 @@ new_nginx_example()
                                 {
                                     "limits":
                                         {
-                                        "cpu": "250m",
-                                        "memory": "150Mi"
+                                        "cpu": "150m",
+                                        "memory": "400Mi"
                                         },
                                     "requests":
                                         {
@@ -646,7 +646,7 @@ spec:
   selector:
     matchLabels:
       app: ${nginx_name}
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
@@ -657,11 +657,11 @@ spec:
         image: nginx:1.7.9
         resources:
             limits:
-                memory: "250Mi"
-                cpu: "100m"
+                cpu: "150m"
+                memory: "400Mi"
             requests:
-                memory: "150Mi"
-                cpu: "50m"
+                cpu: "100m"
+                memory: "50Mi"
         ports:
         - containerPort: 80
 __EOF__
