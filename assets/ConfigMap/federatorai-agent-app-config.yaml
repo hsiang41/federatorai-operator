@@ -10,18 +10,22 @@ data:
      output-level = "info" # debug, info, warn, error, fatal, none
 
     [input_jobs]
+        {{if .Kafka.Enabled}}
         [input_jobs.kafka]
         name = "kafka"
         schedule-spec = "@every 30s"
         lib-path = "/lib/inputlib/inputlib_kafka.so"
         lib-configuration = "/etc/alameda/federatorai-agent/input/alameda_kafka.toml"
+        {{end}}
 
     [output_jobs]
+        {{if .Kafka.Enabled}}
         [output_jobs.datahub]
         name = "datahub"
         schedule-spec = "@every 30s"
         lib-path = "/lib/outputlib/outputlib_datahub.so"
         lib-configuration = "/etc/alameda/federatorai-agent/output/alameda_datahub.toml"
+        {{end}}
 
   alameda_kafka.toml: |
     [global]

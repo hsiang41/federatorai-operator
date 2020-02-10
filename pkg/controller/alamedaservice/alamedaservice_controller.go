@@ -513,7 +513,12 @@ func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace,
 		prometheusConfig.Protocol = prometheusURL.Scheme
 	}
 
+	enabled := false
+	if len(asp.Kafka.BrokerAddresses) > 0 {
+		enabled = true
+	}
 	kafka := component.KafkaConfig{
+		Enabled:         enabled,
 		BrokerAddresses: asp.Kafka.BrokerAddresses,
 		Version:         asp.Kafka.Version,
 		SASL: component.SASLConfig{

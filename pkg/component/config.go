@@ -16,6 +16,7 @@ type PrometheusConfig struct {
 }
 
 type KafkaConfig struct {
+	Enabled         bool
 	BrokerAddresses []string
 	Version         string
 
