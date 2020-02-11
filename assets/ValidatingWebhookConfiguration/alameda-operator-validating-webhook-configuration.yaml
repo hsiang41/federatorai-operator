@@ -6,59 +6,59 @@ metadata:
   creationTimestamp: null
   name: alameda-operator-validating-webhook-configuration
 webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: alameda-operator-webhook-service
-      namespace: {{.NameSpace}}      
-      path: /validate-autoscaling-containers-ai-v1alpha1-alamedascaler
-  failurePolicy: Ignore
-  name: valamedascaler.containers.ai
-  rules:
-  - apiGroups:
-    - autoscaling.containers.ai
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - alamedascalers
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: alameda-operator-webhook-service
-      namespace: {{.NameSpace}}      
-      path: /validate-autoscaling-containers-ai-v1-deployment
-  failurePolicy: Ignore
-  name: vdeployment.containers.ai
-  rules:
-  - apiGroups:    
-    - extensions
-    - apps    
-    apiVersions:  
-    - v1beta1
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - deployments    
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: alameda-operator-webhook-service
-      namespace: {{.NameSpace}}      
-      path: /validate-autoscaling-containers-ai-v1-deploymentconfig
-  failurePolicy: Ignore
-  name: vdeploymentconfig.containers.ai
-  rules:
-  - apiGroups:
-    - apps.openshift.io
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - deploymentconfigs
+# - clientConfig:
+#     caBundle: Cg==
+#     service:
+#       name: alameda-operator-webhook-service
+#       namespace: {{.NameSpace}}      
+#       path: /validate-autoscaling-containers-ai-v1alpha1-alamedascaler
+#   failurePolicy: Ignore
+#   name: valamedascaler.containers.ai
+#   rules:
+#   - apiGroups:
+#     - autoscaling.containers.ai
+#     apiVersions:
+#     - v1alpha1
+#     operations:
+#     - CREATE
+#     - UPDATE
+#     resources:
+#     - alamedascalers
+# - clientConfig:
+#     caBundle: Cg==
+#     service:
+#       name: alameda-operator-webhook-service
+#       namespace: {{.NameSpace}}      
+#       path: /validate-autoscaling-containers-ai-v1-deployment
+#   failurePolicy: Ignore
+#   name: vdeployment.containers.ai
+#   rules:
+#   - apiGroups:    
+#     - extensions
+#     - apps    
+#     apiVersions:  
+#     - v1beta1
+#     - v1
+#     operations:
+#     - CREATE
+#     - UPDATE
+#     resources:
+#     - deployments    
+# - clientConfig:
+#     caBundle: Cg==
+#     service:
+#       name: alameda-operator-webhook-service
+#       namespace: {{.NameSpace}}      
+#       path: /validate-autoscaling-containers-ai-v1-deploymentconfig
+#   failurePolicy: Ignore
+#   name: vdeploymentconfig.containers.ai
+#   rules:
+#   - apiGroups:
+#     - apps.openshift.io
+#     apiVersions:
+#     - v1
+#     operations:
+#     - CREATE
+#     - UPDATE
+#     resources:
+#     - deploymentconfigs

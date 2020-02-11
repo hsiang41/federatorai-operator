@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/api/security"
 	securityv1 "github.com/openshift/api/security/v1"
 
+	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -49,7 +50,8 @@ import (
 )
 
 const (
-	serviceExposureAnnotationKey = "servicesxposures.alamedaservices.federatorai.containers.ai"
+	admissionWebhookAnnotationKeySecretName = "secret.name"
+	serviceExposureAnnotationKey            = "servicesxposures.alamedaservices.federatorai.containers.ai"
 )
 
 var (
@@ -275,7 +277,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		log.Error(err, "create crd failed")
 	}
 	if err := r.syncPodSecurityPolicy(instance, clusterRoleGC, asp, installResource); err != nil {
-		log.V(-1).Info("sync podSecurityPolicy failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync podSecurityPolicy failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncSecurityContextConstraints(instance, asp, installResource); err != nil {
@@ -283,7 +285,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
 	}
 	if err := r.syncClusterRole(instance, clusterRoleGC, asp, installResource); err != nil {
-		log.V(-1).Info("sync clusterRole failed, retry reconciling AlamedaService",
+		log.V(-1).Info("Sync clusterRole failed, retry reconciling AlamedaService",
 			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
@@ -293,17 +295,17 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	if err := r.syncClusterRoleBinding(instance, clusterRoleGC, asp, installResource); err != nil {
-		log.V(-1).Info("sync clusterRoleBinding failed, retry reconciling AlamedaService",
+		log.V(-1).Info("Sync clusterRoleBinding failed, retry reconciling AlamedaService",
 			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 
 	if err := r.syncRole(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync Role failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync Role failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncRoleBinding(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync RoleBinding failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync RoleBinding failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.createSecret(instance, asp, installResource); err != nil {
@@ -315,37 +317,37 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncConfigMap(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync configMap failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync configMap failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncService(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync service failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync service failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncServiceExposure(instance, asp, installResource); err != nil {
 		log.V(-1).Info("Sync service exposure failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
-	if err := r.createMutatingWebhookConfiguration(instance, clusterRoleGC, asp, installResource); err != nil {
+	if err := r.syncMutatingWebhookConfiguration(instance, clusterRoleGC, asp, installResource); err != nil {
 		log.V(-1).Info("create MutatingWebhookConfiguration failed, retry reconciling AlamedaService",
 			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncDeployment(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync deployment failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync deployment failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
-	if err := r.createValidatingWebhookConfiguration(instance, clusterRoleGC, asp, installResource); err != nil {
-		log.V(-1).Info("create ValidatingWebhookConfiguration failed, retry reconciling AlamedaService",
+	if err := r.syncValidatingWebhookConfiguration(instance, clusterRoleGC, asp, installResource); err != nil {
+		log.V(-1).Info("Sync ValidatingWebhookConfiguration failed, retry reconciling AlamedaService",
 			"AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncStatefulSet(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync statefulset failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync statefulset failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncIngress(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync Ingress failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync Ingress failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.syncRoute(instance, asp, installResource); err != nil {
@@ -353,7 +355,7 @@ func (r *ReconcileAlamedaService) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
 	}
 	if err := r.syncDaemonSet(instance, asp, installResource); err != nil {
-		log.V(-1).Info("sync DaemonSet failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
+		log.V(-1).Info("Sync DaemonSet failed, retry reconciling AlamedaService", "AlamedaService.Namespace", instance.Namespace, "AlamedaService.Name", instance.Name, "msg", err.Error())
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 	if err := r.createAlamedaNotificationChannels(clusterRoleGC, installResource); err != nil {
@@ -1200,7 +1202,7 @@ func (r *ReconcileAlamedaService) getSecret(namespace, name string) (corev1.Secr
 	return secret, nil
 }
 
-func (r *ReconcileAlamedaService) createMutatingWebhookConfiguration(instance *federatoraiv1alpha1.AlamedaService,
+func (r *ReconcileAlamedaService) syncMutatingWebhookConfiguration(instance *federatoraiv1alpha1.AlamedaService,
 	gcIns *rbacv1.ClusterRole, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
 	for _, fileString := range resource.MutatingWebhookConfigurationList {
 		mutatingWebhookConfiguration, err := componentConfig.NewMutatingWebhookConfiguration(fileString)
@@ -1213,7 +1215,11 @@ func (r *ReconcileAlamedaService) createMutatingWebhookConfiguration(instance *f
 			return errors.Errorf("Fail MutatingWebhookConfiguration SetControllerReference: %s", err.Error())
 		}
 
-		secretName := mutatingWebhookConfiguration.ObjectMeta.Annotations["secret.name"]
+		secretName, exist := mutatingWebhookConfiguration.ObjectMeta.Annotations[admissionWebhookAnnotationKeySecretName]
+		if !exist {
+			return errors.Errorf(`annotation key("%s") is empty`, admissionWebhookAnnotationKeySecretName)
+		}
+
 		secret, err := r.getSecret(instance.Namespace, secretName)
 		if err != nil {
 			return errors.Errorf("get secret failed: %s", err.Error())
@@ -1223,17 +1229,33 @@ func (r *ReconcileAlamedaService) createMutatingWebhookConfiguration(instance *f
 			mutatingWebhookConfiguration.Webhooks[i].ClientConfig.CABundle = caCert
 		}
 
-		log.Info("Creating a new Resource MutatingWebhookConfiguration... ", "name", mutatingWebhookConfiguration.Name)
-		err = r.client.Create(context.TODO(), mutatingWebhookConfiguration)
-		if err != nil && !k8sErrors.IsAlreadyExists(err) {
-			return errors.Errorf("create MutatingWebhookConfiguration %s failed: %s", mutatingWebhookConfiguration.Name, err.Error())
+		instance := admissionregistrationv1beta1.MutatingWebhookConfiguration{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: mutatingWebhookConfiguration.Name}, &instance)
+		if err != nil && k8sErrors.IsNotFound(err) {
+			log.Info("Creating MutatingWebhookConfiguration...", "name", mutatingWebhookConfiguration.Name)
+			err = r.client.Create(context.TODO(), mutatingWebhookConfiguration)
+			if err != nil && !k8sErrors.IsAlreadyExists(err) {
+				return errors.Wrapf(err, `create MutatingWebhookConfiguration("%s") failed`, mutatingWebhookConfiguration.Name)
+			}
+		} else if err != nil {
+			return errors.Wrapf(err, `get MutatingWebhookConfiguration("%s") failed`, mutatingWebhookConfiguration.Name)
+		} else {
+			copyInstance := admissionregistrationv1beta1.MutatingWebhookConfiguration{}
+			instance.DeepCopyInto(&copyInstance)
+
+			copyInstance.Webhooks = mutatingWebhookConfiguration.Webhooks
+			log.Info("Updating MutatingWebhookConfiguration", "name", mutatingWebhookConfiguration.Name)
+			err = r.client.Update(context.TODO(), &copyInstance)
+			if err != nil {
+				return errors.Wrapf(err, `update MutatingWebhookConfiguration("%s")`, mutatingWebhookConfiguration.Name)
+			}
+			log.Info("Updating MutatingWebhookConfiguration done.", "name", mutatingWebhookConfiguration.Name)
 		}
-		log.Info("Successfully Creating Resource MutatingWebhookConfiguration", "name", mutatingWebhookConfiguration.Name)
 	}
 	return nil
 }
 
-func (r *ReconcileAlamedaService) createValidatingWebhookConfiguration(instance *federatoraiv1alpha1.AlamedaService,
+func (r *ReconcileAlamedaService) syncValidatingWebhookConfiguration(instance *federatoraiv1alpha1.AlamedaService,
 	gcIns *rbacv1.ClusterRole, asp *alamedaserviceparamter.AlamedaServiceParamter, resource *alamedaserviceparamter.Resource) error {
 	for _, fileString := range resource.ValidatingWebhookConfigurationList {
 		validatingWebhookConfiguration, err := componentConfig.NewValidatingWebhookConfiguration(fileString)
@@ -1245,7 +1267,11 @@ func (r *ReconcileAlamedaService) createValidatingWebhookConfiguration(instance 
 			return errors.Errorf("Fail ValidatingWebhookConfiguration SetControllerReference: %s", err.Error())
 		}
 
-		secretName := validatingWebhookConfiguration.ObjectMeta.Annotations["secret.name"]
+		secretName, exist := validatingWebhookConfiguration.ObjectMeta.Annotations[admissionWebhookAnnotationKeySecretName]
+		if !exist {
+			return errors.Errorf(`annotation key("%s") is empty`, admissionWebhookAnnotationKeySecretName)
+		}
+
 		secret, err := r.getSecret(instance.Namespace, secretName)
 		if err != nil {
 			return errors.Errorf("get secret failed: %s", err.Error())
@@ -1255,10 +1281,27 @@ func (r *ReconcileAlamedaService) createValidatingWebhookConfiguration(instance 
 			validatingWebhookConfiguration.Webhooks[i].ClientConfig.CABundle = caCert
 		}
 
-		log.Info("Creating a new Resource ValidatingWebhookConfiguration... ", "name", validatingWebhookConfiguration.Name)
-		err = r.client.Create(context.TODO(), validatingWebhookConfiguration)
-		if err != nil && !k8sErrors.IsAlreadyExists(err) {
-			return errors.Errorf("create ValidatingWebhookConfiguration %s failed: %s", validatingWebhookConfiguration.Name, err.Error())
+		instance := admissionregistrationv1beta1.ValidatingWebhookConfiguration{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: validatingWebhookConfiguration.Name}, &instance)
+		if err != nil && k8sErrors.IsNotFound(err) {
+			log.Info("Creating ValidatingWebhookConfiguration...", "name", validatingWebhookConfiguration.Name)
+			err = r.client.Create(context.TODO(), validatingWebhookConfiguration)
+			if err != nil && !k8sErrors.IsAlreadyExists(err) {
+				return errors.Wrapf(err, `create ValidatingWebhookConfiguration("%s") failed`, validatingWebhookConfiguration.Name)
+			}
+		} else if err != nil {
+			return errors.Wrapf(err, `get ValidatingWebhookConfiguration("%s") failed`, validatingWebhookConfiguration.Name)
+		} else {
+			copyInstance := admissionregistrationv1beta1.ValidatingWebhookConfiguration{}
+			instance.DeepCopyInto(&copyInstance)
+
+			copyInstance.Webhooks = validatingWebhookConfiguration.Webhooks
+			log.Info("Updating ValidatingWebhookConfiguration", "name", validatingWebhookConfiguration.Name)
+			err = r.client.Update(context.TODO(), &copyInstance)
+			if err != nil {
+				return errors.Wrapf(err, `update ValidatingWebhookConfiguration("%s")`, validatingWebhookConfiguration.Name)
+			}
+			log.Info("Updating ValidatingWebhookConfiguration done.", "name", validatingWebhookConfiguration.Name)
 		}
 	}
 	return nil
