@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{.NameSpace}}-federatorai-dashboard-backend
+rules:
+# Permission for query prometheus under namespace openshift-monitoring
+- verbs:
+  - get
+  apiGroups:
+  - ""
+  resources:
+  - namespaces

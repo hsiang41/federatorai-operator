@@ -57,3 +57,5 @@ spec:
         name: federatorai-dashboard-backend-config
       - name:  federatorai-backend-data-storage
       - name:  federatorai-backend-log-storage
+      serviceAccount: federatorai-dashboard-backend
+      serviceAccountName: federatorai-dashboard-backend

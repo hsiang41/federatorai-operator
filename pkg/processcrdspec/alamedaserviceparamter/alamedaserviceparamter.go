@@ -42,6 +42,9 @@ var (
 		"Service/federatorai-dashboard-backendSV.yaml",
 		"Deployment/federatorai-dashboard-backendDM.yaml",
 		"ConfigMap/federatorai-dashboard-backend-config.yaml",
+		"ClusterRole/federatorai-dashboard-backendCR.yaml",
+		"ClusterRoleBinding/federatorai-dashboard-backendCRB.yaml",
+		"ServiceAccount/federatorai-dashboard-backendSA.yaml",
 	}
 
 	datahubList = []string{
