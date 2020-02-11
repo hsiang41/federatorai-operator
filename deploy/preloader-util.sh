@@ -513,7 +513,7 @@ new_nginx_example()
                 "name": "${nginx_name}"
             },
             "spec": {
-                "replicas": 2,
+                "replicas": 1,
                 "selector": {
                     "app": "${nginx_name}",
                     "deploymentconfig": "${nginx_name}"
@@ -646,7 +646,7 @@ spec:
   selector:
     matchLabels:
       app: ${nginx_name}
-  replicas: 2
+  replicas: 1
   template:
     metadata:
       labels:
