@@ -80,6 +80,8 @@ spec:
               value: quay.io/prophetstor/fedemeter-influxdb:latest
             - name: RELATED_IMAGE_FEDERATORAI_AGENT
               value: quay.io/prophetstor/federatorai-agent-ubi:latest
+            - name: RELATED_IMAGE_FEDERATORAI_AGENT_APP
+              value: quay.io/prophetstor/federatorai-agent-app:latest
             - name: RELATED_IMAGE_FEDERATORAI_AGENT_GPU
               value: quay.io/prophetstor/federatorai-agent-gpu:latest
             - name: RELATED_IMAGE_FEDERATORAI_AGENT_PRELOADER
