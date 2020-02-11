@@ -23,7 +23,7 @@ const (
 	defaultImageFedemeterInfluxdb         = "quay.io/prophetstor/fedemeter-influxdb:v0.3.39"
 	defaultImageFrontend                  = "quay.io/prophetstor/federatorai-dashboard-frontend:v4.2.702"
 	defaultImageBackend                   = "quay.io/prophetstor/federatorai-dashboard-backend:v4.2.702"
-	defaultImageFederatoraiAgentApp       = "repo.prophetservice.com/federatorai-agent-app:v0.9.148"
+	defaultImageFederatoraiAgentApp       = "quay.io/prophetstor/federatorai-agent-app:v4.2.703"
 )
 
 type ImageConfig struct {
