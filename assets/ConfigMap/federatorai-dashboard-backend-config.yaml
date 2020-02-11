@@ -35,7 +35,7 @@ data:
         "prefix": "api/v1/query?query=",
         "rangeprefix": "api/v1/query_range",
         "username": "internal",
-        "password": ""
+        "password": "",
         "bearTokenFilePath": "{{.Prometheus.BearerTokenFile}}"
       },
       "restapi": {
