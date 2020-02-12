@@ -107,3 +107,11 @@ rules:
   - ""
   resources:
   - configmaps
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - get
+  - list
+  - watch
