@@ -75,43 +75,24 @@ const (
 	FederatoraiAgentPreloaderCTN = "federatorai-agent-preloader"
 	FederatoraiBackendCTN        = "federatorai-dashboard-backend"
 	FederatoraiFrontendCTN       = "federatorai-dashboard-frontend"
+
 	//Statefulset name
 	FedemeterInflixDBSSN = "fedemeter-influxdb"
 	//CRD NAME
 	AlamedaScalerName         = "alamedascalers.autoscaling.containers.ai"
 	AlamedaRecommendationName = "alamedarecommendations.autoscaling.containers.ai"
-	// Service name
-	AdmissionControllerServiceName  = "admission-controller"
-	AlamedaAIServiceName            = "alameda-ai"
-	AlamedaDatahubServiceName       = "alameda-datahub"
-	AlamedaGrafanaServiceName       = "alameda-grafana"
-	AlamedaInfluxdbServiceName      = "alameda-influxdb"
-	AlamedaRabbitmqServiceName      = "alameda-rabbitmq"
-	AlamedaWeaveScopeAppServiceName = "alameda-weave-scope-app"
-	FedemeterInfluxdbServiceName    = "fedemeter-influxdb"
-	FedemeterAPIServiceName         = "fedemeter-api"
-	FederatoraiRestServiceName      = "federatorai-rest"
-	FederatoraiFrontendServiceName  = "federatorai-dashboard-frontend"
-	FederatoraibackendServiceName   = "federatorai-dashboard-backend"
+
 	//CRD Version
 	OriAlamedaOperatorVersion = "v0.3.8"
+
 	//AlamedaService modify Prometheus's var
-	OriginPrometheus_URL               = "https://prometheus-k8s.openshift-monitoring.svc:9091"
-	OriginDeploymentPrometheusLocation = "ALAMEDA_DATAHUB_PROMETHEUS_URL"
-	OriginComfigMapPrometheusLocation  = "prometheus.yaml"
-	NamespaceService                   = "federatorai.svc"
-	DefaultNamespace                   = "federatorai"
-	NamespaceServiceAccount            = "serviceaccount:federatorai"
+	DefaultNamespace        = "federatorai"
+	NamespaceServiceAccount = "serviceaccount:federatorai"
+
 	//MountPath
 	DataMountPath = "/var/lib"
 	LogMountPath  = "/var/log"
-	//Recommandation config
-	OriginComfigMapRecommandation = "config.toml"
-	//Execution config
-	OriginComfigMapExecution = "config.yml"
-	//fedemeter config
-	OriginComfigMapFedemeterInfluxDBHost = "FEDEMETER_INFLUXDB_HOST"
-	OriginComfigMapFedemeterDataHubHost  = "DATAHUB_HOST"
+
 	//Delete Deployment When Modify ConfigMap or Service(Temporary strategy)
 	GrafanaYaml            = "Deployment/alameda-grafanaDM.yaml"
 	GrafanaDatasourcesName = "grafana-datasources"

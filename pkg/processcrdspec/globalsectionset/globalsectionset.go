@@ -19,71 +19,45 @@ func GlobalSectionSetParamterToStatefulset(ss *appsv1.StatefulSet, asp *alamedas
 func GlobalSectionSetParamterToDeployment(dep *appsv1.Deployment, asp *alamedaserviceparamter.AlamedaServiceParamter) {
 	switch dep.Name {
 	case util.AlamedaaiDPN:
-		{
-			//Global section set persistentVolumeClaim to mountPath
-			util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-ai-type.pvc", util.AlamedaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaaiCTN, "alameda-ai-type-storage", util.AlamedaGroup)
-		}
+		//Global section set persistentVolumeClaim to mountPath
+		util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-ai-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaaiCTN, "alameda-ai-type-storage", util.AlamedaGroup)
 	case util.AlamedaoperatorDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-operator-type.pvc", util.AlamedaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaoperatorCTN, "alameda-operator-type-storage", util.AlamedaGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-operator-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaoperatorCTN, "alameda-operator-type-storage", util.AlamedaGroup)
 	case util.AlamedadatahubDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-datahub-type.pvc", util.AlamedaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.AlamedadatahubCTN, "alameda-datahub-type-storage", util.AlamedaGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-datahub-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.AlamedadatahubCTN, "alameda-datahub-type-storage", util.AlamedaGroup)
 	case util.AlamedaevictionerDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-evictioner-type.pvc", util.AlamedaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaevictionerCTN, "alameda-evictioner-type-storage", util.AlamedaGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-evictioner-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaevictionerCTN, "alameda-evictioner-type-storage", util.AlamedaGroup)
 	case util.AdmissioncontrollerDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "admission-controller-type.pvc", util.AlamedaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.AdmissioncontrollerCTN, "admission-controller-type-storage", util.AlamedaGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "admission-controller-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.AdmissioncontrollerCTN, "admission-controller-type-storage", util.AlamedaGroup)
 	case util.AlamedarecommenderDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-recommender-type.pvc", util.AlamedaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.AlamedarecommenderCTN, "alameda-recommender-type-storage", util.AlamedaGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-recommender-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.AlamedarecommenderCTN, "alameda-recommender-type-storage", util.AlamedaGroup)
 	case util.AlamedaexecutorDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-executor-type.pvc", util.AlamedaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaexecutorCTN, "alameda-executor-type-storage", util.AlamedaGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-executor-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaexecutorCTN, "alameda-executor-type-storage", util.AlamedaGroup)
 	case util.AlamedadispatcherDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-dispatcher-type.pvc", util.AlamedaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.AlamedadispatcherCTN, "alameda-dispatcher-type-storage", util.AlamedaGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-dispatcher-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.AlamedadispatcherCTN, "alameda-dispatcher-type-storage", util.AlamedaGroup)
 	case util.AlamedaRabbitMQDPN:
 	case util.AlamedaanalyzerDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-analyzer-type.pvc", util.AlamedaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaanalyzerCTN, "alameda-analyzer-type-storage", util.AlamedaGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-analyzer-type.pvc", util.AlamedaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaanalyzerCTN, "alameda-analyzer-type-storage", util.AlamedaGroup)
 	case util.FedemeterDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "fedemeter-type.pvc", util.FedemeterGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.FedemeterCTN, "fedemeter-type-storage", util.FedemeterGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "fedemeter-type.pvc", util.FedemeterGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.FedemeterCTN, "fedemeter-type-storage", util.FedemeterGroup)
 	case util.InfluxdbDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "my-alameda.influxdb-type.pvc", util.InfluxDBGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.InfluxdbCTN, "influxdb-type-storage", util.InfluxDBGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "my-alameda.influxdb-type.pvc", util.InfluxDBGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.InfluxdbCTN, "influxdb-type-storage", util.InfluxDBGroup)
 	case util.GrafanaDPN:
-		{
-			util.SetStorageToVolumeSource(dep, asp.Storages, "my-alameda.grafana-type.pvc", util.GrafanaGroup)
-			util.SetStorageToMountPath(dep, asp.Storages, util.GrafanaCTN, "grafana-type-storage", util.GrafanaGroup)
-		}
+		util.SetStorageToVolumeSource(dep, asp.Storages, "my-alameda.grafana-type.pvc", util.GrafanaGroup)
+		util.SetStorageToMountPath(dep, asp.Storages, util.GrafanaCTN, "grafana-type-storage", util.GrafanaGroup)
 	case util.AlamedaweavescopeDPN:
-		{
-			util.SetImagePullPolicy(dep, util.AlamedaweavescopeCTN, asp.AlamedaWeavescopeSectionSet.ImagePullPolicy)
-		}
+		util.SetImagePullPolicy(dep, util.AlamedaweavescopeCTN, asp.AlamedaWeavescopeSectionSet.ImagePullPolicy)
 	case util.AlamedaNotifierDPN:
 		util.SetStorageToVolumeSource(dep, asp.Storages, "alameda-notifier-type.pvc", util.AlamedaGroup)
 		util.SetStorageToMountPath(dep, asp.Storages, util.AlamedaNofitierCTN, "alameda-notifier-type-storage", util.AlamedaGroup)

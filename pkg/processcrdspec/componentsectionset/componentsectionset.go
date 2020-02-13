@@ -3,8 +3,6 @@ package componentsectionset
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/containers-ai/federatorai-operator/pkg/apis/federatorai/v1alpha1"
 	"github.com/containers-ai/federatorai-operator/pkg/processcrdspec/alamedaserviceparamter"
 	"github.com/containers-ai/federatorai-operator/pkg/util"
@@ -167,134 +165,43 @@ func SectionSetParamterToPersistentVolumeClaim(pvc *corev1.PersistentVolumeClaim
 	for _, pvcusage := range v1alpha1.PvcUsage {
 		switch pvc.Name {
 		case fmt.Sprintf("alameda-ai-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaAISectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaAISectionSet.Storages, pvcusage)
 		case fmt.Sprintf("alameda-operator-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaOperatorSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaOperatorSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("alameda-datahub-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaDatahubSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaDatahubSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("alameda-evictioner-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaEvictionerSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaEvictionerSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("admission-controller-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AdmissionControllerSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AdmissionControllerSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("alameda-recommender-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaRecommenderSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaRecommenderSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("alameda-executor-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaExecutorSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaExecutorSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("alameda-dispatcher-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaDispatcherSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaDispatcherSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("alameda-analyzer-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaAnalyzerSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaAnalyzerSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("fedemeter-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaFedemeterSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.AlamedaFedemeterSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("my-alameda.influxdb-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.InfluxdbSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.InfluxdbSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("my-alameda.grafana-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.GrafanaSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.GrafanaSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("federatorai-agent-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiAgentSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiAgentSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("federatorai-agent-gpu-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiAgentGPUSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiAgentGPUSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("federatorai-agent-app-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiAgentAppSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiAgentAppSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("federatorai-rest-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiRestSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiRestSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("federatorai-frontend-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiFrontendSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiFrontendSectionSet.Storages, pvcusage)
 		case fmt.Sprintf("federatorai-backend-%s.pvc", pvcusage):
-			{
-				util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiBackendSectionSet.Storages, pvcusage)
-			}
+			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.FederatoraiBackendSectionSet.Storages, pvcusage)
 		}
 	}
-}
-
-func SectionSetParamterToService(svc *corev1.Service, asp *alamedaserviceparamter.AlamedaServiceParamter) error {
-
-	if asp == nil {
-		return errors.New("AlamedaServiceParamter cannnot be nil")
-	}
-
-	for _, serviceExposure := range asp.ServiceExposures {
-		if svc.Name == serviceExposure.Name {
-			if err := processServiceWithServiceExposureSpec(svc, serviceExposure); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func processServiceWithServiceExposureSpec(svc *corev1.Service, serviceExposure v1alpha1.ServiceExposureSpec) error {
-
-	switch serviceExposure.Type {
-	case v1alpha1.ServiceExposureTypeNodePort:
-		if serviceExposure.NodePort == nil {
-			return errors.New("NodePort cannot be nil")
-		}
-		if err := processServiceWithNodePortSpec(svc, *serviceExposure.NodePort); err != nil {
-			return errors.Wrap(err, "process service with NodePortSpec failed")
-		}
-	default:
-		return errors.Errorf("unsupported ServiceExposureType \"%s\"", serviceExposure.Type)
-	}
-
-	return nil
-}
-
-func processServiceWithNodePortSpec(svc *corev1.Service, nodePortSpec v1alpha1.NodePortSpec) error {
-
-	svc.Spec.Type = corev1.ServiceTypeNodePort
-
-	for _, portInNodePortSpec := range nodePortSpec.Ports {
-		findPort := false
-		for i, portInService := range svc.Spec.Ports {
-			if portInNodePortSpec.Port == portInService.Port {
-				findPort = true
-				svc.Spec.Ports[i].NodePort = portInNodePortSpec.NodePort
-				break
-			}
-		}
-		if !findPort {
-			return errors.Errorf("port %d not exist in service", portInNodePortSpec.Port)
-		}
-	}
-
-	return nil
 }
 
 func replaceOrAppendEnvVar(target, source []corev1.EnvVar) []corev1.EnvVar {
