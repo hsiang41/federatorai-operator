@@ -68,3 +68,13 @@ func NewDefaultFederatoraiAgentGPUConfig() FederatoraiAgentGPUConfig {
 		},
 	}
 }
+
+type AIDispatcherConfig struct {
+	Enabled bool
+}
+
+func NewDefaultAIDispatcherConfig() AIDispatcherConfig {
+	return AIDispatcherConfig{
+		Enabled: true,
+	}
+}

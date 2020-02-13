@@ -52,6 +52,7 @@ type ComponentConfig struct {
 	PodTemplateConfig PodTemplateConfig
 
 	FederatoraiAgentGPU FederatoraiAgentGPUConfig
+	AIDispatcher        AIDispatcherConfig
 
 	Image ImageConfig
 
@@ -75,6 +76,7 @@ func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha
 		PodSecurityPolicyVersion: defaultPodSecurityPolicyVersion,
 		PodTemplateConfig:        ptc,
 		FederatoraiAgentGPU:      NewDefaultFederatoraiAgentGPUConfig(),
+		AIDispatcher:             NewDefaultAIDispatcherConfig(),
 		Image:                    NewDefautlImageConfig(),
 		Prometheus:               defaultPrometheusConfig,
 	}
@@ -93,6 +95,10 @@ func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha
 		c.FederatoraiAgentGPU.Datasource.InfluxDB.Address = faiAgentGPUSectionSet.InfluxDB.Address
 		c.FederatoraiAgentGPU.Datasource.InfluxDB.BasicAuth.Username = faiAgentGPUSectionSet.InfluxDB.Username
 		c.FederatoraiAgentGPU.Datasource.InfluxDB.BasicAuth.Password = faiAgentGPUSectionSet.InfluxDB.Password
+	}
+
+	if alamedaService.Spec.EnableDispatcher != nil {
+		c.AIDispatcher.Enabled = *alamedaService.Spec.EnableDispatcher
 	}
 
 	return &c

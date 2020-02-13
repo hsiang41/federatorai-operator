@@ -40,7 +40,7 @@ spec:
         - name: DATAHUB_ADDRESS
           value: "alameda-datahub.{{.NameSpace}}.svc:50050"
         - name: PREDICT_QUEUE_ENABLED
-          value: "true"
+          value: {{if .AIDispatcher.Enabled}}"true"{{else}}"false"{{end}}
         - name: CONSUMER_PUSH_ENABLED
           value: "true"
         - name: PREDICT_QUEUE_URL

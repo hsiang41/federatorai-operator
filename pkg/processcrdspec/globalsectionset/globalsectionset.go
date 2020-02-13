@@ -5,7 +5,6 @@ import (
 
 	"github.com/containers-ai/federatorai-operator/pkg/apis/federatorai/v1alpha1"
 	"github.com/containers-ai/federatorai-operator/pkg/processcrdspec/alamedaserviceparamter"
-	"github.com/containers-ai/federatorai-operator/pkg/processcrdspec/updateenvvar"
 	"github.com/containers-ai/federatorai-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -110,9 +109,6 @@ func GlobalSectionSetParamterToDeployment(dep *appsv1.Deployment, asp *alamedase
 		util.SetStorageToVolumeSource(dep, asp.Storages, "federatorai-backend-type.pvc", util.AlamedaGroup)
 		util.SetStorageToMountPath(dep, asp.Storages, util.FederatoraiBackendCTN, "federatorai-backend-type-storage", util.AlamedaGroup)
 	}
-
-	envVars := getEnvVarsToUpdateByDeployment(dep.Name, asp)
-	updateenvvar.UpdateEnvVarsToDeployment(dep, envVars)
 }
 
 func GlobalSectionSetParamterToDaemonSet(ds *appsv1.DaemonSet, asp *alamedaserviceparamter.AlamedaServiceParamter) {
@@ -128,37 +124,4 @@ func GlobalSectionSetParamterToPersistentVolumeClaim(pvc *corev1.PersistentVolum
 			util.SetStorageToPersistentVolumeClaimSpec(pvc, asp.Storages, pvcusage)
 		}
 	}
-}
-
-func getEnvVarsToUpdateByDeployment(deploymentName string, asp *alamedaserviceparamter.AlamedaServiceParamter) []corev1.EnvVar {
-
-	var envVars []corev1.EnvVar
-
-	switch deploymentName {
-	case util.AlamedaaiDPN:
-		envVars = getAlamedaAIEnvVarsToUpdate(asp)
-	default:
-	}
-
-	return envVars
-}
-
-func getAlamedaAIEnvVarsToUpdate(asp *alamedaserviceparamter.AlamedaServiceParamter) []corev1.EnvVar {
-
-	envVars := make([]corev1.EnvVar, 0)
-
-	switch asp.EnableDispatcher {
-	case true:
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  "PREDICT_QUEUE_ENABLED",
-			Value: "true",
-		})
-	case false:
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  "PREDICT_QUEUE_ENABLED",
-			Value: "false",
-		})
-	}
-
-	return envVars
 }
