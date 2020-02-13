@@ -183,104 +183,20 @@ func SetStatefulSetImagePullPolicy(sts *appsv1.StatefulSet, ctn string, imagePul
 
 //if user set storage log then find VolumeSource path's location
 func getVolumeLogIndex(dep *appsv1.Deployment) int {
-	if len(dep.Spec.Template.Spec.Volumes) > 0 {
-		for index, value := range dep.Spec.Template.Spec.Volumes {
-			if value.Name == "alameda-ai-log-storage" {
-				return index
-			}
-			if value.Name == "alameda-operator-log-storage" {
-				return index
-			}
-			if value.Name == "alameda-datahub-log-storage" {
-				return index
-			}
-			if value.Name == "alameda-evictioner-log-storage" {
-				return index
-			}
-			if value.Name == "admission-controller-log-storage" {
-				return index
-			}
-			if value.Name == "alameda-recommender-log-storage" {
-				return index
-			}
-			if value.Name == "alameda-executor-log-storage" {
-				return index
-			}
-			if value.Name == "alameda-dispatcher-log-storage" {
-				return index
-			}
-			if value.Name == "alameda-analyzer-log-storage" {
-				return index
-			}
-			if value.Name == "fedemeter-log-storage" {
-				return index
-			}
-			if value.Name == "federatorai-rest-log-storage" {
-				return index
-			}
-			if value.Name == "federatorai-frontend-log-storage" {
-				return index
-			}
-			if value.Name == "federatorai-backend-log-storage" {
-				return index
-			}
+	for i, volume := range dep.Spec.Template.Spec.Volumes {
+		if strings.HasSuffix(volume.Name, "-log-storage") {
+			return i
 		}
-		return -1
 	}
 	return -1
 }
 
 //if user set storage data then find VolumeSource path's location
 func getVolumeDataIndex(dep *appsv1.Deployment) int {
-	if len(dep.Spec.Template.Spec.Volumes) > 0 {
-		for index, value := range dep.Spec.Template.Spec.Volumes {
-			if value.Name == "alameda-ai-data-storage" {
-				return index
-			}
-			if value.Name == "alameda-operator-data-storage" {
-				return index
-			}
-			if value.Name == "alameda-datahub-data-storage" {
-				return index
-			}
-			if value.Name == "alameda-evictioner-data-storage" {
-				return index
-			}
-			if value.Name == "admission-controller-data-storage" {
-				return index
-			}
-			if value.Name == "alameda-recommender-data-storage" {
-				return index
-			}
-			if value.Name == "alameda-executor-data-storage" {
-				return index
-			}
-			if value.Name == "alameda-dispatcher-data-storage" {
-				return index
-			}
-			if value.Name == "alameda-analyzer-data-storage" {
-				return index
-			}
-			if value.Name == "influxdb-data-storage" {
-				return index
-			}
-			if value.Name == "grafana-data-storage" {
-				return index
-			}
-			if value.Name == "fedemeter-data-storage" {
-				return index
-			}
-			if value.Name == "federatorai-rest-data-storage" {
-				return index
-			}
-			if value.Name == "federatorai-frontend-data-storage" {
-				return index
-			}
-			if value.Name == "federatorai-backend-data-storage" {
-				return index
-			}
+	for i, volume := range dep.Spec.Template.Spec.Volumes {
+		if strings.HasSuffix(volume.Name, "-data-storage") {
+			return i
 		}
-		return -1
 	}
 	return -1
 }
