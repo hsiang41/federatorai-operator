@@ -28,3 +28,14 @@ data:
     period_rate = 60
     period_count = 5
     data_source = "workload"
+
+    [kafka]
+    terminating_time = 30
+    algo_interval = 60
+    resource_tolerance = 0.25
+    [kafka.weight]
+    cpu = 0.031611
+    memory = 0.004267
+    io = 0.02411265         # MIOPS, aws oregon 0.0625/720/3600*1000000
+    storage = 0.000111111   # gcp us-west local SSD GB
+    request = 0.000005      # aws s3 oregon
