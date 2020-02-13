@@ -119,15 +119,18 @@ func setImageConfigWithImageTag(imageConfig component.ImageConfig, imageTag stri
 	return imageConfig
 }
 
-func setImageConfigWithAlamedaServiceParameter(imageConfig component.ImageConfig, asp alamedaserviceparamter.AlamedaServiceParamter) component.ImageConfig {
-
+func setImageConfigWithAlamedaServiceParameterGlobalConfiguration(imageConfig component.ImageConfig, asp alamedaserviceparamter.AlamedaServiceParamter) component.ImageConfig {
 	if asp.ImageLocation != "" {
 		imageConfig = setImageConfigWithImageLocation(imageConfig, asp.ImageLocation)
 	}
 
-	imageTag := asp.Version
-	imageConfig = setImageConfigWithImageTag(imageConfig, imageTag)
+	if imageTag := asp.Version; imageTag != "" {
+		imageConfig = setImageConfigWithImageTag(imageConfig, imageTag)
+	}
+	return imageConfig
+}
 
+func setImageConfigWithAlamedaServiceParameter(imageConfig component.ImageConfig, asp alamedaserviceparamter.AlamedaServiceParamter) component.ImageConfig {
 	if image := asp.InfluxdbSectionSet.Image; image != "" {
 		imageConfig.SetInfluxdb(image)
 	}

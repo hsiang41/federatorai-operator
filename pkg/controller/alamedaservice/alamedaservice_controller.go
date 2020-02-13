@@ -494,8 +494,9 @@ func (r *ReconcileAlamedaService) getNamespace(namespaceName string) (corev1.Nam
 func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace, alamedaService federatoraiv1alpha1.AlamedaService, asp alamedaserviceparamter.AlamedaServiceParamter) (*component.ComponentConfig, error) {
 
 	imageConfig := newDefautlImageConfig()
-	imageConfig = setImageConfigWithAlamedaServiceParameter(imageConfig, asp)
+	imageConfig = setImageConfigWithAlamedaServiceParameterGlobalConfiguration(imageConfig, asp)
 	imageConfig = setImageConfigWithEnv(imageConfig)
+	imageConfig = setImageConfigWithAlamedaServiceParameter(imageConfig, asp)
 
 	podTemplateConfig := component.NewDefaultPodTemplateConfig(namespace)
 
