@@ -999,7 +999,6 @@ func (r *ReconcileAlamedaService) syncConfigMap(instance *federatoraiv1alpha1.Al
 			return errors.Errorf("Fail resourceCM SetControllerReference: %s", err.Error())
 		}
 		//process resource configmap into desire configmap
-		resourceCM = processcrdspec.ParamterToConfigMap(resourceCM, asp)
 		foundCM := &corev1.ConfigMap{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: resourceCM.Name, Namespace: resourceCM.Namespace}, foundCM)
 		if err != nil && k8sErrors.IsNotFound(err) {

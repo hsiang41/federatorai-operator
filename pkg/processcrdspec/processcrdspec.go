@@ -26,10 +26,6 @@ func ParamterToSecurityContextConstraints(scc *securityv1.SecurityContextConstra
 	updateenvvar.AssignServiceAccountsToSecurityContextConstraints(scc, asp.NameSpace)
 	return scc
 }
-func ParamterToConfigMap(cm *corev1.ConfigMap, asp *alamedaserviceparamter.AlamedaServiceParamter) *corev1.ConfigMap {
-	globalsectionset.GlobalSectionSetParamterToConfigMap(cm, asp.PrometheusService, cm.Namespace) //ConfigMapSpec's PrometheusService
-	return cm
-}
 
 func ParamterToPersistentVolumeClaim(pvc *corev1.PersistentVolumeClaim, asp *alamedaserviceparamter.AlamedaServiceParamter) *corev1.PersistentVolumeClaim {
 	globalsectionset.GlobalSectionSetParamterToPersistentVolumeClaim(pvc, asp)

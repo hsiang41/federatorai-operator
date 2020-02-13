@@ -123,15 +123,6 @@ func GlobalSectionSetParamterToDaemonSet(ds *appsv1.DaemonSet, asp *alamedaservi
 	}
 }
 
-func processConfigMapsPrometheusService(cm *corev1.ConfigMap, prometheusservice string) {
-	if strings.Contains(cm.Data[util.OriginComfigMapPrometheusLocation], util.OriginPrometheus_URL) && prometheusservice != "" {
-		cm.Data[util.OriginComfigMapPrometheusLocation] = strings.Replace(cm.Data[util.OriginComfigMapPrometheusLocation], util.OriginPrometheus_URL, prometheusservice, -1)
-	}
-}
-func GlobalSectionSetParamterToConfigMap(cm *corev1.ConfigMap, prometheusService string, namespace string) {
-	processConfigMapsPrometheusService(cm, prometheusService) //ConfigMapData's PrometheusService
-}
-
 func GlobalSectionSetParamterToPersistentVolumeClaim(pvc *corev1.PersistentVolumeClaim, asp *alamedaserviceparamter.AlamedaServiceParamter) {
 	for _, pvcusage := range v1alpha1.PvcUsage {
 		if strings.Contains(pvc.Name, string(pvcusage)) {

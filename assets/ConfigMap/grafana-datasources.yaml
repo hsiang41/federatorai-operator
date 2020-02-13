@@ -39,7 +39,7 @@ data:
                 "name": "Prometheus",
                 "type": "prometheus",
                 "access": "proxy",
-                "url": "https://prometheus-k8s.openshift-monitoring.svc:9091",
+                "url": "{{.Prometheus.Address}}",
                 "basicAuth": false,
                 "isDefault": true,
                 "jsonData": {
