@@ -44,6 +44,7 @@ import (
 var log = logf.Log.WithName("controller_alamedaservice")
 
 type ComponentConfig struct {
+	Platform                 string
 	NameSpace                string
 	PodSecurityPolicyGroup   string
 	PodSecurityPolicyVersion string
@@ -68,6 +69,7 @@ func NewComponentConfig(ptc PodTemplateConfig, alamedaService federatoraiv1alpha
 	)
 
 	c := ComponentConfig{
+		Platform:                 alamedaService.Spec.Platform,
 		NameSpace:                defaultNamespace,
 		PodSecurityPolicyGroup:   defaultPodSecurityPolicyGroup,
 		PodSecurityPolicyVersion: defaultPodSecurityPolicyVersion,

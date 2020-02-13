@@ -54,6 +54,8 @@ spec:
           value: /etc/tls-certs/tls.key
         - name: ALAMEDA_ADMCTL_CACERTFILE
           value: /etc/tls-certs/ca.crt
+        - name: ALAMEDA_ADMCTL_JSONPATCHVALIDATIONFUNC
+          value: {{if eq .Platform "openshift3.9"}}"openshift3.9"{{else}}""{{end}}
         volumeMounts:
         - mountPath: /etc/tls-certs
           name: tls-certs
