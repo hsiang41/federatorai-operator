@@ -52,6 +52,9 @@ import (
 const (
 	admissionWebhookAnnotationKeySecretName = "secret.name"
 	serviceExposureAnnotationKey            = "servicesxposures.alamedaservices.federatorai.containers.ai"
+
+	defaultKafkaVersion              = "0.11.0.0"
+	defaultPrometheusBearerTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 var (
@@ -502,7 +505,7 @@ func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace,
 
 	prometheusConfig := component.PrometheusConfig{
 		Address:         alamedaService.Spec.PrometheusService,
-		BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+		BearerTokenFile: defaultPrometheusBearerTokenFile,
 		TLS: component.TLSConfig{
 			InsecureSkipVerify: true,
 		},
@@ -523,7 +526,7 @@ func (r *ReconcileAlamedaService) newComponentConfig(namespace corev1.Namespace,
 	kafka := component.KafkaConfig{
 		Enabled:         enabled,
 		BrokerAddresses: asp.Kafka.BrokerAddresses,
-		Version:         asp.Kafka.Version,
+		Version:         defaultKafkaVersion,
 		SASL: component.SASLConfig{
 			Enabled: asp.Kafka.SASL.Enabled,
 			BasicAuth: component.BasicAuth{

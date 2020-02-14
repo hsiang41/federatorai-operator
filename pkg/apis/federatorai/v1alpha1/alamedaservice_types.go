@@ -29,9 +29,9 @@ type SASLSpec struct {
 
 type KafkaSpec struct {
 	BrokerAddresses []string `json:"brokerAddresses,omitempty"`
-	Version         string   `json:"version,omitempty"`
-	TLS             TLSSpec  `json:"tls,omitempty"`
-	SASL            SASLSpec `json:"sasl,omitempty"`
+	// Version         string   `json:"version,omitempty"`
+	TLS  TLSSpec  `json:"tls,omitempty"`
+	SASL SASLSpec `json:"sasl,omitempty"`
 }
 
 // AlamedaServiceSpec defines the desired state of AlamedaService

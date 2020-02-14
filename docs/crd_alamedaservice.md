@@ -258,9 +258,6 @@ spec:
 - Field: brokerAddresses
   - type: string array
   - description: Kafka brokers' address that can be used when creating connection.
-- Field: version
-  - type: string
-  - description: Version of Kafka.
 - Field: sasl
   - type: [SASLSpec](#saslspec)
   - description: SASL specification when communicate with Kafka.
