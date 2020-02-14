@@ -23,7 +23,6 @@ var (
 		"RELATED_IMAGE_DATAHUB",
 		"RELATED_IMAGE_EVICTIONER",
 		"RELATED_IMAGE_EXECUTOR",
-		"RELATED_IMAGE_ALPINE",
 		"RELATED_IMAGE_GRAFANA",
 		"RELATED_IMAGE_INFLUXDB",
 		"RELATED_IMAGE_NOTIFIER",
@@ -250,10 +249,6 @@ func setImageConfigWithEnv(imageConfig component.ImageConfig) component.ImageCon
 		case "RELATED_IMAGE_EXECUTOR":
 			if value := os.Getenv("RELATED_IMAGE_EXECUTOR"); value != "" {
 				imageConfig.SetExecutor(value)
-			}
-		case "RELATED_IMAGE_ALPINE":
-			if value := os.Getenv("RELATED_IMAGE_ALPINE"); value != "" {
-				imageConfig.SetAlpine(value)
 			}
 		case "RELATED_IMAGE_GRAFANA":
 			if value := os.Getenv("RELATED_IMAGE_GRAFANA"); value != "" {

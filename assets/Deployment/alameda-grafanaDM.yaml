@@ -24,7 +24,7 @@ spec:
     spec:
       initContainers:
       - name: gettoken
-        image: {{.Image.Alpine}}
+        image: {{.Image.Grafana}}
         command: ["sh","/shell/gettoken.sh"]
         volumeMounts:
         - mountPath: /shell

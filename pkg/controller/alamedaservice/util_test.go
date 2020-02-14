@@ -212,7 +212,6 @@ func TestSetImageConfigWithEnv(t *testing.T) {
 				"RELATED_IMAGE_DATAHUB":                     "test-image-DATAHUB",
 				"RELATED_IMAGE_EVICTIONER":                  "test-image-EVICTIONER",
 				"RELATED_IMAGE_EXECUTOR":                    "test-image-EXECUTOR",
-				"RELATED_IMAGE_ALPINE":                      "test-image-ALPINE",
 				"RELATED_IMAGE_GRAFANA":                     "test-image-GRAFANA",
 				"RELATED_IMAGE_INFLUXDB":                    "test-image-INFLUXDB",
 				"RELATED_IMAGE_NOTIFIER":                    "test-image-NOTIFIER",
